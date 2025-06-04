@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "djbabel"
+authors = [
+  { name="Federico Beffa", email="beffa@fbengineering.ch" },
+]
+description = "Python library for inteaction with DJ software"
+# readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mutagen",
+    "pillow"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+]
+keywords = ["DJ", "Serato", "Serato DJ Pro", "RekordBox"]
+
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+
+[tool.hatch.build.targets.sdist]
+include = ["/src/djbabel"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/djbabel"]
+
+[tool.hatch.version]
+path = "VERSION"
+pattern = "(?P<version>[^']+)"
+
+[project.urls]
+Homepage = "https://gitlab.com/fbengineering/djbabel"
+Documentation = "https://fbengineering.gitlab.io/djbabel"
