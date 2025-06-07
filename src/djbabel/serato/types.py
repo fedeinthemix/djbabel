@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from enum import Enum
 from ..types import AFormat
 
+############################################################
+# Audio file metadata tags
+
 @dataclass
 class STag:
     names: dict[AFormat, str]
@@ -42,3 +45,49 @@ class SeratoTags(Enum):
         AFormat.FLAC : 'serato_overview'
     },
                     b'Serato Overview')
+
+    # PLAYCOUNT = STag({
+    #     AFormat.MP3 : 'TXXX:SERATO_PLAYCOUNT',
+    #     # base64 endoded number with footer
+    #     # example b'0\x00\xd1\xb6\xb6\xa4\x90'
+    #     AFormat.M4A : '----:com.serato.dj:playcount',
+    #     AFormat.FLAC : 'serato_playcount' # just a number (no prefix), e.g. b'0'
+    # },
+    #                    b'')
+
+    ANALYSIS = STag({
+        AFormat.MP3 : 'GEOB:Serato Analysis',
+        AFormat.M4A : '----:com.serato.dj:analysisVersion',
+        AFormat.FLAC : 'serato_analysis'
+    },
+                    b'Serato Analysis')
+
+    # VIDEOASSOC = STag({
+    #     AFormat.MP3 : '',
+    #     AFormat.M4A : '----:com.serato.dj:videoassociation',
+    #     AFormat.FLAC : 'serato_video_assoc'
+    # },
+    #                 b'Serato VidAssoc')
+
+    RELVOL = STag({
+        AFormat.MP3 : 'RVA2:SeratoGain',
+        AFormat.M4A : '----:com.serato.dj:relvol',
+        AFormat.FLAC : 'serato_relvol'
+    },
+                    b'Serato RelVolAd')
+
+############################################################
+# Metadata Base
+
+class EntryBase(object):
+    FIELDS: tuple = ()
+    def __init__(self, *args):
+        assert len(args) == len(self.FIELDS)
+        for field, value in zip(self.FIELDS, args):
+            setattr(self, field, value)
+
+    def __repr__(self):
+        return '{name}({data})'.format(
+            name=self.__class__.__name__,
+            data=', '.join('{}={!r}'.format(name, getattr(self, name))
+                           for name in self.FIELDS))

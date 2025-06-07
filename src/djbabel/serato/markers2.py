@@ -3,7 +3,7 @@ import base64
 import io
 from mutagen._file import FileType
 
-from .types import SeratoTags
+from .types import SeratoTags, EntryBase
 from .utils import get_serato_metadata, FMT_VERSION, readbytes
 
 def get_serato_markers_v2(audio: FileType) -> dict | None:
@@ -16,17 +16,8 @@ def get_serato_markers_v2(audio: FileType) -> dict | None:
 #
 # original code licensed under the MIT License
 
-class Entry(object):
-    def __init__(self, *args):
-        assert len(args) == len(self.FIELDS)
-        for field, value in zip(self.FIELDS, args):
-            setattr(self, field, value)
-
-    def __repr__(self):
-        return '{name}({data})'.format(
-            name=self.__class__.__name__,
-            data=', '.join('{}={!r}'.format(name, getattr(self, name))
-                           for name in self.FIELDS))
+class Entry(EntryBase):
+    pass
 
 
 class UnknownEntry(Entry):
@@ -134,7 +125,7 @@ class FlipEntry(Entry):
         loop, num_actions = struct.unpack(cls.FMT2, other[:info2_size])
         action_data = other[info2_size:]
         actions = []
-        for i in range(num_actions):
+        for _ in range(num_actions):
             type_id, size = struct.unpack(cls.FMT2, action_data[:info2_size])
             action_data = action_data[info2_size:]
             if type_id == 0:

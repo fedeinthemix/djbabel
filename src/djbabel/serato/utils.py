@@ -1,10 +1,26 @@
 import base64
 from mutagen.mp4 import MP4FreeForm
 from mutagen._file import FileType
-from mutagen.id3 import GEOB
+from mutagen.id3 import GEOB, TXXX, RVA2
 
 from djbabel.serato.types import SeratoTags
 from ..types import AFormat
+
+###################################################################
+
+def identity(x):
+    return x
+
+def is_list_of_one_str(data):
+    return isinstance(data, list) and (len(data) == 1) and isinstance(data[0], str)
+
+def is_list_of_one_mp4freeform(data):
+    return isinstance(data, list) and (len(data) == 1) and isinstance(data[0], MP4FreeForm)
+
+# def is_id3_geob(data):
+#     return isinstance(data, GEOB)
+
+###################################################################
 
 def parse_serato_envelope(data: bytes, prefix: bytes) -> bytes:
     """
@@ -27,13 +43,11 @@ def parse_serato_envelope(data: bytes, prefix: bytes) -> bytes:
     except Exception as e:
         raise ValueError(f"Base64 decoding failed: {e}")
 
-    # Look for the 'Serato Markers2' signature to locate the actual payload
     mkr = prefix + b'\x00'
     marker_offset = decoded.find(mkr) + len(mkr)
     if marker_offset == -1:
         raise ValueError(f"{prefix} marker not found in decoded envelope")
 
-    # The rest of the data from this point is the actual payload
     return decoded[marker_offset:]
 
 def audio_file_type(audio: FileType) -> AFormat:
@@ -46,15 +60,6 @@ def audio_file_type(audio: FileType) -> AFormat:
     else:
         raise NotImplementedError("File format not supported")
 
-def is_list_of_one_str(data):
-    return isinstance(data, list) and (len(data) == 1) and isinstance(data[0], str)
-
-def is_list_of_one_mp4freeform(data):
-    return isinstance(data, list) and (len(data) == 1) and isinstance(data[0], MP4FreeForm)
-
-def is_id3_geob(data):
-    return isinstance(data, GEOB)
-
 def maybe_metadata(audio, tag_name):
     if tag_name in audio.tags.keys():
         data = audio.tags[tag_name]
@@ -62,8 +67,12 @@ def maybe_metadata(audio, tag_name):
             return bytes(data[0], 'utf-8')
         elif is_list_of_one_mp4freeform(data):
             return bytes(data[0])
-        elif is_id3_geob(data):
+        elif isinstance(data, GEOB):
             return data.data
+        elif isinstance(data, TXXX):
+            return data.text
+        elif isinstance(data, RVA2):
+            return data
         else:
             raise NotImplementedError('Unexpected audio metadata type')
     else:
@@ -96,7 +105,7 @@ def get_serato_metadata(stag: SeratoTags, parser, keys: list[str] | None = None,
         data = serato_metadata(audio, stag)
         if data != None:
             if keys == None:
-                return {stag.name.lower() : list(parser(data))}
+                return {stag.name.lower() : f_out(parser(data))}
             else:
                 return dict(zip(keys, f_out(parser(data))))
         else:
