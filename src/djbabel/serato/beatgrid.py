@@ -7,7 +7,7 @@ from mutagen._file import FileType
 from .types import SeratoTags
 from .utils import get_serato_metadata, FMT_VERSION, readbytes
 
-def get_serato_beatgrid(audio: FileType) -> dict | None:
+def get_serato_beatgrid(audio: FileType) -> list | None:
     return get_serato_metadata(SeratoTags.BEATGRID, parse)(audio)
 
 ###############################################################################

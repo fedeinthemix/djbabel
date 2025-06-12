@@ -6,8 +6,9 @@ from mutagen._file import FileType
 from .types import SeratoTags, EntryBase
 from .utils import get_serato_metadata, FMT_VERSION, readbytes
 
-def get_serato_markers_v2(audio: FileType) -> dict | None:
-    return get_serato_metadata(SeratoTags.MARKERS2, parse)(audio)
+def get_serato_markers_v2(audio: FileType) -> list[EntryBase]:
+    m = get_serato_metadata(SeratoTags.MARKERS2, parse)(audio)
+    return m if isinstance(m, list) else []
 
 ###############################################################################
 # Code from https://github.com/Holzhaus/serato-tags
@@ -16,13 +17,14 @@ def get_serato_markers_v2(audio: FileType) -> dict | None:
 #
 # original code licensed under the MIT License
 
-class Entry(EntryBase):
-    pass
+# class Entry(EntryBase):
+#     pass
 
 
-class UnknownEntry(Entry):
+class UnknownEntry(EntryBase):
     NAME = None
     FIELDS = ('data',)
+    __match_args__ = FIELDS
 
     @classmethod
     def load(cls, data):
@@ -32,10 +34,11 @@ class UnknownEntry(Entry):
         return self.data
 
 
-class BpmLockEntry(Entry):
+class BpmLockEntry(EntryBase):
     NAME = 'BPMLOCK'
     FIELDS = ('enabled',)
     FMT = '?'
+    __match_args__ = FIELDS
 
     @classmethod
     def load(cls, data):
@@ -45,10 +48,11 @@ class BpmLockEntry(Entry):
         return struct.pack(self.FMT, *(getattr(self, f) for f in self.FIELDS))
 
 
-class ColorEntry(Entry):
+class ColorEntry(EntryBase):
     NAME = 'COLOR'
     FMT = 'c3s'
     FIELDS = ('field1', 'color',)
+    __match_args__ = FIELDS
 
     @classmethod
     def load(cls, data):
@@ -58,11 +62,12 @@ class ColorEntry(Entry):
         return struct.pack(self.FMT, *(getattr(self, f) for f in self.FIELDS))
 
 
-class CueEntry(Entry):
+class CueEntry(EntryBase):
     NAME = 'CUE'
     FMT = '>cBIc3s2s'
     FIELDS = ('field1', 'index', 'position', 'field4', 'color', 'field6',
               'name',)
+    __match_args__ = FIELDS
 
     @classmethod
     def load(cls, data):
@@ -82,11 +87,17 @@ class CueEntry(Entry):
         ))
 
 
-class LoopEntry(Entry):
+class LoopEntry(EntryBase):
     NAME = 'LOOP'
-    FMT = '>cBII4s4sB?'
+    # FMT = '>cBII4s4sB?'
+    # FIELDS = ('field1', 'index', 'startposition', 'endposition', 'field5',
+    #           'field6', 'color', 'locked', 'name',)
+    # corrected color parsing according to (no bit reordering)
+    # https://github.com/Holzhaus/triseratops/blob/e602f8eec94b5ea0cf91f318180aab5eedf4bfa2/src/tag/markers2.rs#L373
+    FMT = '>cBII4sc3sc?'
     FIELDS = ('field1', 'index', 'startposition', 'endposition', 'field5',
-              'field6', 'color', 'locked', 'name',)
+              'field6', 'color', 'field8', 'locked', 'name',)
+    __match_args__ = FIELDS
 
     @classmethod
     def load(cls, data):
@@ -106,13 +117,14 @@ class LoopEntry(Entry):
         ))
 
 
-class FlipEntry(Entry):
+class FlipEntry(EntryBase):
     NAME = 'FLIP'
     FMT1 = 'cB?'
     FMT2 = '>BI'
     FMT3 = '>BI16s'
     FIELDS = ('field1', 'index', 'enabled', 'name', 'loop', 'num_actions',
               'actions')
+    __match_args__ = FIELDS
 
     @classmethod
     def load(cls, data):

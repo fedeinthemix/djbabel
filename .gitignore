@@ -7,5 +7,4 @@ dist
 */*/#*#
 *~
 *.res
-tests/scratch.py
 doc/_build

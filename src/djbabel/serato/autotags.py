@@ -6,8 +6,9 @@ import struct
 from .types import SeratoTags
 from .utils import get_serato_metadata, FMT_VERSION, readbytes
 
-def get_serato_autotags(audio: FileType) -> dict | None:
-    return get_serato_metadata(SeratoTags.AUTOTAGS, parse, ['bmp', 'autogain', 'gaindb'])(audio)
+def get_serato_autotags(audio: FileType) -> dict[str, float] | None:
+    at = get_serato_metadata(SeratoTags.AUTOTAGS, parse, ['bpm', 'autogain', 'gaindb'])(audio)
+    return at if isinstance(at, dict) else None
 
 ###############################################################################
 # Code from https://github.com/Holzhaus/serato-tags with minor modifications.
@@ -21,7 +22,7 @@ def parse(data: bytes):
     version = struct.unpack(FMT_VERSION, fp.read(2))
     assert version == (0x01, 0x01)
 
-    for i in range(3):
+    for _ in range(3):
         data = b''.join(readbytes(fp))
         yield float(data.decode('ascii'))
 

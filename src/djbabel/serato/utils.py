@@ -2,8 +2,9 @@ import base64
 from mutagen.mp4 import MP4FreeForm
 from mutagen._file import FileType
 from mutagen.id3 import GEOB, TXXX, RVA2
+import struct
 
-from djbabel.serato.types import SeratoTags
+from djbabel.serato.types import EntryBase, SeratoTags
 from ..types import AFormat
 
 ###################################################################
@@ -16,9 +17,6 @@ def is_list_of_one_str(data):
 
 def is_list_of_one_mp4freeform(data):
     return isinstance(data, list) and (len(data) == 1) and isinstance(data[0], MP4FreeForm)
-
-# def is_id3_geob(data):
-#     return isinstance(data, GEOB)
 
 ###################################################################
 
@@ -101,17 +99,22 @@ def serato_metadata(audio: FileType, stag: SeratoTags) -> bytes | None:
         return data
 
 def get_serato_metadata(stag: SeratoTags, parser, keys: list[str] | None = None, f_out = list):
-    def get_metadata(audio: FileType) -> dict | None:
+    def get_metadata(audio: FileType) -> dict[str, EntryBase | float | int | str] | list[EntryBase] | None:
         data = serato_metadata(audio, stag)
         if data != None:
             if keys == None:
-                return {stag.name.lower() : f_out(parser(data))}
+                return f_out(parser(data))
             else:
                 return dict(zip(keys, f_out(parser(data))))
         else:
             return None
 
     return get_metadata
+
+
+def parse_color(data: bytes) -> tuple[int, int, int]:
+    b, r, g = struct.unpack('BBB', data)
+    return (r, g, b)
 
 ###############################################################################
 # Code from https://github.com/Holzhaus/serato-tags
