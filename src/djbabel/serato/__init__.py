@@ -5,44 +5,77 @@ from djbabel.serato.beatgrid import get_serato_beatgrid
 from djbabel.serato.markers2 import get_serato_markers_v2, CueEntry, BpmLockEntry, LoopEntry, ColorEntry
 from djbabel.serato.types import EntryBase
 # from djbabel.serato.overview import get_serato_overview
-from ..types import ATrack, AMarkerType, AMarker, ABeatGridBPM, ABeatGrid, ADataSource, ALoudness, ASoftware
+from ..types import ATrack, AMarkerType, AMarker, ABeatGridBPM, ABeatGrid, ADataSource, ALoudness, ASoftware, AFormat
 from .utils import audio_file_type, parse_color, identity
 
+from collections.abc import Callable
 from datetime import date
+from functools import reduce
 from mutagen.mp3 import MP3
 from mutagen._file import FileType # pyright: ignore
 import os
 from pathlib import Path
-from typing import TypeVar, Callable
+from typing import TypeVar, Any
 import warnings
 
 ###########################################################################
 
+# https://mutagen-specs.readthedocs.io/en/latest/id3/id3v2.4.0-frames.html
 map_to_mp3_text_tag = {
     'title' : 'TIT2',
     'artist' : 'TPE1',
-    'grouping': 'TPE2',
-    'remixer': 'TPE4',
-    'composer': 'TCOM',
     'album' : 'TALB',
+    'grouping': 'TIT1',
+    'composer': 'TCOM',
     'genre' : 'TCON',
     # 'aformat' : 'TFLT', # use audio.mime
-    'track_number' : 'TRCK', # may be, e.g. "1/10"
-    'disc_number': 'TPOS', # may be, e.g. "1/2"
     'year' : 'TDRC',
     'release_date' : 'TDRL',
+    'label' : 'TPUB',
+    'track_number' : 'TRCK', # may be, e.g. "1/10"
+    'disc_number': 'TPOS', # may be, e.g. "1/2"
+    'remixer': 'TPE4',
+    # 'comments' : 'COMM', # special handling
+    'rating': 'POPM', # XXX field .rating!!
     'play_count' : 'TXXX:SERATO_PLAYCOUNT',
     # 'play_count' : 'PCNT', # ID3 standard tag, use Serato one
     'tonality' : 'TKEY',
-    'label' : 'TPUB',
-    # 'comments' : 'COMM', # special handling
-    'track_number' : 'TRCK', # may be, e.g. "1/10"
-    'disc_number': 'TPOS', # may be, e.g. "1/2"
     # 'average_bpm' : 'TBPM', # this is rounded, use Serato data instead
     'play_count' : 'TXXX:SERATO_PLAYCOUNT',
     # 'play_count' : 'PCNT', # ID3 standard tag
-    'rating': 'POPM', # XXX field .rating!!
 }
+
+# the can multiple tags with the same key, e.g., for multiple authors
+# case INSENSITIVE
+# https://xiph.org/vorbis/doc/v-comment.html
+map_to_flac_text_tag = {
+    ## stadnard defined
+    'title' : 'TITLE',
+    'artist' : 'ARTIST',
+    'album' : 'ALBUM',
+    'grouping': 'GROUPING',
+    'mix' : 'VERSION',
+    'composer': 'COMPOSER',
+    'genre' : 'GENRE',
+    'release_date' : 'DATE',
+    'label' : 'ORGANIZATION',
+    'track_number' : 'TRACKNUMBER', # may be, e.g. "1/10"
+
+    ## community defined
+    'disc_number': 'DISCNUMBER', # may be, e.g. "1/2"
+    'remixer': 'REMIXER',
+    # 'comments' : 'COMMENT', # special handling
+    'rating': 'RATING', # XXX field .rating!!
+
+    ## other
+    'tonality' : 'initialkey',
+    # 'average_bpm' : 'BPM', # this is rounded, use Serato data instead
+    'play_count' : 'serato_playcount',
+    # 'play_count' : 'PLAY_COUNT', # use Serato one
+}
+
+###########################################################################
+# Helpers
 
 A = TypeVar('A')
 def head(ls: list[A]) -> A | None:
@@ -50,7 +83,7 @@ def head(ls: list[A]) -> A | None:
         return ls[0]
     elif len(ls) > 1:
         c = ls[0]
-        warnings.warn(f"Multiple ID3 comments, using {c}", UserWarning)
+        warnings.warn(f"Multiple comments, using {c}", UserWarning)
         return c
     else:
         return None
@@ -74,17 +107,77 @@ def track_number(s: str | None) -> int | None:
     else:
         return None
 
-def std_tag_text(name: str, tags, f_out: Callable[[str | None]] = identity):
-    if name in map_to_mp3_text_tag.keys():
-        tag = map_to_mp3_text_tag[name]
-        return f_out(head(tags[tag].text)) if tag in tags.keys() else None
+###########################################################################
+# metadata from standard tags
+
+def get_tags(audio: FileType):
+    if audio.tags is not None:
+        tags = audio.tags
     else:
-        return None
+        tags = {}
+    return tags
 
-def std_comments_tag(tags) -> str | None:
-    tag = head(list(filter(lambda s: s.startswith('COMM'), tags.keys())))
-    return tags[tag].text[0] if tag is not None else None
+def std_tag_text(name: str, audio: FileType, f_out: Callable[[str | None],Any] = identity):
 
+    tags = get_tags(audio)
+
+    match audio_file_type(audio):
+        case AFormat.MP3:
+            tag_map = map_to_mp3_text_tag
+            if name in tag_map.keys():
+                tag = tag_map[name]
+                return f_out(str(head(tags[tag].text))) if tag in tags.keys() else None
+            else:
+                return None
+
+        case AFormat.FLAC:
+            tag_map = map_to_flac_text_tag
+            if name in tag_map.keys():
+                tag = tag_map[name].lower()
+                tag_keys = tags.keys()
+                if tag in tag_keys and len(tag_keys) > 1:
+                    return f_out(head(tags[tag]))
+                elif tag in tag_keys and len(tag_keys) > 1:
+                    return f_out(reduce(lambda acc, e: acc + ', ' + e, tags[tag], ''))
+                else:
+                    return None
+            else:
+                return None
+
+        case _:
+            tag_map = {}
+            return None
+
+
+def std_comments_tag(audio: FileType) -> str | None:
+    tags = get_tags(audio)
+
+    match audio_file_type(audio):
+        case AFormat.MP3:
+            tag = head(list(filter(lambda s: s.startswith('COMM'), tags.keys())))
+            return tags[tag].text[0] if tag is not None else None
+        case AFormat.FLAC:
+            return std_tag_text('comments', audio)
+        case _:
+            return None
+
+
+def release_date(audio: FileType):
+    s = std_tag_text('release_date', audio)
+    if s is None:
+        # try with year
+        y = std_tag_text('year', audio)
+        if isinstance(y, str) and y.isnumeric():
+            return date.fromisoformat(y + '-01-01')
+        else:
+            return None
+    elif s.isnumeric():
+        return date.fromisoformat(s + '-01-01')
+    else:
+        return date.fromisoformat(s)
+
+###########################################################################
+# other metadata
 
 def file_size(audio: MP3) -> int:
     if audio.filename is None:
@@ -111,10 +204,10 @@ def beatgrid(audio: MP3) -> ABeatGrid:
 
     bg = get_serato_beatgrid(audio)
     bpms = from_serato(bg) if bg is not None else []
-    return ABeatGrid(bpms) 
+    return ABeatGrid(bpms)
 
 
-def markers(mkrs: list[EntryBase]) -> list[AMarker]:
+def get_markers(mkrs: list[EntryBase]) -> list[AMarker]:
     def from_serato(m: EntryBase) -> AMarker:
         match m:
             case CueEntry(_, index, position, _, color, _, name): # pyright: ignore [reportGeneralTypeIssues]
@@ -185,36 +278,28 @@ def samplerate(audio) -> int:
     else:
         raise ValueError(f"No sample_rate info for file {audio.filename}.")
 
-def release_date(s: str | None):
-    return date.fromisoformat(s) if isinstance(s,str) else None
-        
 ###########################################################################
 
 def from_serato(audio: MP3) -> ATrack:
 
-    if audio.tags is not None:
-        tags = audio.tags
-    else:
-        tags = {}
-
     mkrs: list[EntryBase] = get_serato_markers_v2(audio)
 
     return ATrack(
-        title = std_tag_text('title', tags),
-        artist = std_tag_text('artist', tags),
-        grouping = std_tag_text('grouping', tags),
-        remixer = std_tag_text('remixer', tags),
-        composer = std_tag_text('composer', tags),
-        album = std_tag_text('album', tags),
-        genre = std_tag_text('genre', tags),
-        track_number = track_number(std_tag_text('track_number', tags)),
-        disc_number = track_number(std_tag_text('disc_number', tags)),
-        release_data = release_date(std_tag_text('release_date', tags)),
-        play_count = std_tag_text('play_count', tags, to_int),
-        tonality = std_tag_text('tonality', tags),
-        label = std_tag_text('label', tags),
-        comments = std_comments_tag(tags),
-        rating = std_tag_text('rating', tags, to_int),
+        title = std_tag_text('title', audio),
+        artist = std_tag_text('artist', audio),
+        grouping = std_tag_text('grouping', audio),
+        remixer = std_tag_text('remixer', audio),
+        composer = std_tag_text('composer', audio),
+        album = std_tag_text('album', audio),
+        genre = std_tag_text('genre', audio),
+        track_number = track_number(std_tag_text('track_number', audio)),
+        disc_number = track_number(std_tag_text('disc_number', audio)),
+        release_data = release_date(audio),
+        play_count = std_tag_text('play_count', audio, to_int),
+        tonality = std_tag_text('tonality', audio),
+        label = std_tag_text('label', audio),
+        comments = std_comments_tag(audio),
+        rating = std_tag_text('rating', audio, to_int),
         size = file_size(audio),
         total_time = audio.info.length,
         bit_rate = bitrate(audio),
@@ -222,7 +307,7 @@ def from_serato(audio: MP3) -> ATrack:
         location = location(audio),
         aformat = audio_file_type(audio),
         beatgrid = beatgrid(audio),
-        markers = markers(mkrs),
+        markers = get_markers(mkrs),
         locked = locked(mkrs),
         color = color(mkrs),
         average_bpm = average_bpm(audio),

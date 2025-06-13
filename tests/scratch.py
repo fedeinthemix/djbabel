@@ -6,6 +6,7 @@ import functools
 import sys
 sys.path.append('../src')
 
+from datetime import date
 from pathlib import Path
 import warnings
 import os
@@ -29,7 +30,7 @@ from djbabel.serato.utils import audio_file_type, readbytes, serato_metadata
 from djbabel.serato.types import SeratoTags, EntryBase
 from djbabel.serato.autotags import get_serato_autotags
 from djbabel.serato.overview import get_serato_overview
-from djbabel.serato.beatgrid import get_serato_beatgrid, NonTerminalBeatgridMarker, TerminalBeatgridMarker
+from djbabel.serato.beatgrid import get_serato_beatgrid
 from djbabel.serato.markers import get_serato_markers
 from djbabel.serato.analysis import get_serato_analysis
 from djbabel.serato.relvol import get_serato_relvol
@@ -37,7 +38,7 @@ from djbabel.serato.relvol import get_serato_relvol
 from djbabel.serato.utils import serato_metadata, parse_serato_envelope, serato_tag_marker, serato_tag_name, audio_file_type, maybe_metadata, get_serato_metadata
 from djbabel.types import ABeatGridBPM, ADataSource, AFormat, AMarkerType, AMarker, ASoftware, ATrack, ABeatGrid, ABeatGridBPM, ALoudness
 
-from djbabel.serato import from_serato_audio
+from djbabel.serato import from_serato
 
 #####################################################
 
@@ -161,13 +162,14 @@ a2 = from_serato_audio(audio_mp3)
 
 ##########################################################
 
-from djbabel.serato.__init__v2 import from_serato
+from djbabel.serato import from_serato
 
 
 file_mp3 = Path("audio") / "The_Todd_Terry_Project_-_Weekend.mp3"
 audio_mp3: MP3 = mutagen.File(file_mp3, easy=False) # type: ignore[reportUnknownMemberType]
 
 a1 = from_serato(audio_mp3)
+a_flac = from_serato(audio_flac)
 
 ##########################################################
 
