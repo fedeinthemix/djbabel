@@ -113,7 +113,7 @@ def get_serato_metadata(stag: SeratoTags, parser, keys: list[str] | None = None,
 
 
 def parse_color(data: bytes) -> tuple[int, int, int]:
-    b, r, g = struct.unpack('BBB', data)
+    r, g, b = struct.unpack('BBB', data)
     return (r, g, b)
 
 ###############################################################################

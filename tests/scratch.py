@@ -161,6 +161,16 @@ a2 = from_serato_audio(audio_mp3)
 
 ##########################################################
 
+from djbabel.serato.__init__v2 import from_serato
+
+
+file_mp3 = Path("audio") / "The_Todd_Terry_Project_-_Weekend.mp3"
+audio_mp3: MP3 = mutagen.File(file_mp3, easy=False) # type: ignore[reportUnknownMemberType]
+
+a1 = from_serato(audio_mp3)
+
+##########################################################
+
 # Local Variables:
 # python-shell-interpreter: "ipython"
 # python-shell-interpreter-args: "--simple-prompt"

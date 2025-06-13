@@ -60,8 +60,8 @@ class ADataSource:
 
 @dataclass
 class ATrack:
-    title: str
-    artist: str
+    title: str | None
+    artist: str | None
     composer: str | None
     album: str | None
     grouping: str | None
@@ -89,6 +89,6 @@ class ATrack:
     markers: list[AMarker] | None = None
     beatgrid: ABeatGrid | None = None
     locked: bool = True
-    color: bytes | None = None # track display colors (e.g. in Serato)
+    color: tuple[int, int, int] | None = None # track display colors (e.g. in Serato)
     trackID: int | None = None # How to set? Can we leave it empty in RekordBox?
     loudness: ALoudness | None = None
