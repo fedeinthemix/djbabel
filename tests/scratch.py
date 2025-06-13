@@ -158,18 +158,13 @@ get_track_paths(fields)
 
 ##########################################################
 
-a2 = from_serato_audio(audio_mp3)
 
-##########################################################
-
-from djbabel.serato import from_serato
-
-
-file_mp3 = Path("audio") / "The_Todd_Terry_Project_-_Weekend.mp3"
-audio_mp3: MP3 = mutagen.File(file_mp3, easy=False) # type: ignore[reportUnknownMemberType]
+# file_mp3 = Path("audio") / "The_Todd_Terry_Project_-_Weekend.mp3"
+# audio_mp3: MP3 = mutagen.File(file_mp3, easy=False) # type: ignore[reportUnknownMemberType]
 
 a1 = from_serato(audio_mp3)
 a_flac = from_serato(audio_flac)
+a_m4a = from_serato(audio_m4a)
 
 ##########################################################
 

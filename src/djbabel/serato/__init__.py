@@ -8,10 +8,10 @@ from djbabel.serato.types import EntryBase
 from ..types import ATrack, AMarkerType, AMarker, ABeatGridBPM, ABeatGrid, ADataSource, ALoudness, ASoftware, AFormat
 from .utils import audio_file_type, parse_color, identity
 
+import base64
 from collections.abc import Callable
 from datetime import date
-from functools import reduce
-from mutagen.mp3 import MP3
+from mutagen.mp4 import MP4FreeForm, AtomDataType
 from mutagen._file import FileType # pyright: ignore
 import os
 from pathlib import Path
@@ -50,28 +50,58 @@ map_to_mp3_text_tag = {
 # https://xiph.org/vorbis/doc/v-comment.html
 map_to_flac_text_tag = {
     ## stadnard defined
-    'title' : 'TITLE',
-    'artist' : 'ARTIST',
-    'album' : 'ALBUM',
-    'grouping': 'GROUPING',
-    'mix' : 'VERSION',
-    'composer': 'COMPOSER',
-    'genre' : 'GENRE',
-    'release_date' : 'DATE',
-    'label' : 'ORGANIZATION',
-    'track_number' : 'TRACKNUMBER', # may be, e.g. "1/10"
+    'title' : 'title',
+    'artist' : 'artist',
+    'album' : 'album',
+    'grouping': 'grouping',
+    'mix' : 'version',
+    'composer': 'composer',
+    'genre' : 'genre',
+    'release_date' : 'date',
+    'label' : 'organization',
+    'track_number' : 'tracknumber', # may be, e.g. "1/10"
 
     ## community defined
-    'disc_number': 'DISCNUMBER', # may be, e.g. "1/2"
-    'remixer': 'REMIXER',
+    'disc_number': 'discnumber', # may be, e.g. "1/2"
+    'remixer': 'remixer',
     # 'comments' : 'COMMENT', # special handling
-    'rating': 'RATING', # XXX field .rating!!
+    'rating': 'rating', # XXX field .rating!!
 
     ## other
     'tonality' : 'initialkey',
     # 'average_bpm' : 'BPM', # this is rounded, use Serato data instead
     'play_count' : 'serato_playcount',
     # 'play_count' : 'PLAY_COUNT', # use Serato one
+}
+
+map_to_mp4_tag = {
+    'title': '©nam',       # common name for title
+    'artist': '©ART',      # common name for artist
+    'album': '©alb',       # common name for album
+    'grouping': '©grp',     # common name for grouping
+    'composer': '©wrt',     # common name for composer (writer)
+    'genre': '©gen',       # common name for genre
+    'year': '©day',        # common name for year/creation date
+    'release_date': '©day', # often also uses ©day, or custom tag for more specific date
+    'label': '©lab',       # not a standard MP4 tag, often custom or using '©too' (encoder)
+    'track_number': 'trkn', # track number, often stores 'track/total' as a tuple
+    'disc_number': 'disk',  # disc number, often stores 'disc/total' as a tuple
+    'remixer': '©rem',     # not a standard MP4 tag, often custom or using '©too'
+    'rating': 'rtng',      # rating (e.g., 0-100)
+    # 'play_count': 'pcnt',   # play count (specific to Apple/iTunes)
+    # XXX temporarily disable as the content is of type
+    # XXX [MP4FreeForm(b'MADRtrak*\xc2\xb1\xc2\xb4\x07k\x0b\x05\xc2\x80', <AtomDataType.UTF8: 1>)]
+    'play_count': '----:com.serato.dj:playcount', # used by Serato
+    # 'tonality': '©key',    # not a standard MP4 tag, often custom (e.g., 'key')
+    'tonality' : '----:com.apple.iTunes:initialkey', # used by Serato
+    # 'comments': '©cmt',   # comments
+    # BPM is often stored as a custom tag or user data
+}
+
+map_to_aformat = {
+    AFormat.MP3 : map_to_mp3_text_tag,
+    AFormat.FLAC : map_to_flac_text_tag,
+    AFormat.M4A : map_to_mp4_tag,
 }
 
 ###########################################################################
@@ -83,7 +113,7 @@ def head(ls: list[A]) -> A | None:
         return ls[0]
     elif len(ls) > 1:
         c = ls[0]
-        warnings.warn(f"Multiple comments, using {c}", UserWarning)
+        warnings.warn(f"Multiple entries {ls}. Using {c}", UserWarning)
         return c
     else:
         return None
@@ -107,6 +137,35 @@ def track_number(s: str | None) -> int | None:
     else:
         return None
 
+
+def parse_flac_m4a_tag_value(tags: dict[str, Any], tag: str) -> str | None:
+    vs = tags[tag]
+    if len(vs) > 0:
+        v = vs[0]
+        if isinstance(v, str):
+            return ','.join(vs)
+        # Serato play_count
+        elif tag == map_to_mp4_tag['play_count'] and isinstance(v, MP4FreeForm) and v.FORMAT_TEXT ==  AtomDataType.UTF8:
+            data = bytes(v) #.replace(b'\n', b'')
+            # XXX Need to check more examples
+            # base64 format: https://datatracker.ietf.org/doc/html/rfc4648.html
+            if len(data) < 20:
+                padding = b'B' * (-len(data) %4) + b'BB=='
+            else:
+                padding = b'=' * (-len(data) % 4)
+            payload = base64.b64decode(data + padding)
+            # first convert to int, otherwise we get a byte string.
+            return str(int(payload[:payload.index(b'\x00')]))
+        # Serato initialkey
+        elif isinstance(v, MP4FreeForm) and v.FORMAT_TEXT ==  AtomDataType.UTF8:
+            return v.decode('UTF-8')
+            # return ','.join(list(map(lambda x: x.decode('UTF-8'), vs)))
+        else:
+            return None
+    else:
+        return None
+
+
 ###########################################################################
 # metadata from standard tags
 
@@ -120,32 +179,43 @@ def get_tags(audio: FileType):
 def std_tag_text(name: str, audio: FileType, f_out: Callable[[str | None],Any] = identity):
 
     tags = get_tags(audio)
+    aformat = audio_file_type(audio)
+    tag_map = map_to_aformat[aformat]
 
-    match audio_file_type(audio):
+    match aformat:
         case AFormat.MP3:
-            tag_map = map_to_mp3_text_tag
             if name in tag_map.keys():
                 tag = tag_map[name]
+                # .text field in not of type str
                 return f_out(str(head(tags[tag].text))) if tag in tags.keys() else None
             else:
                 return None
 
+        # FLAC metadate tag keys are case insensitive
         case AFormat.FLAC:
-            tag_map = map_to_flac_text_tag
             if name in tag_map.keys():
-                tag = tag_map[name].lower()
+                tag = tag_map[name]
                 tag_keys = tags.keys()
-                if tag in tag_keys and len(tag_keys) > 1:
-                    return f_out(head(tags[tag]))
-                elif tag in tag_keys and len(tag_keys) > 1:
-                    return f_out(reduce(lambda acc, e: acc + ', ' + e, tags[tag], ''))
+                if tag.lower() in tag_keys:
+                    return f_out(parse_flac_m4a_tag_value(tags, tag))
+                else:
+                    return None
+            else:
+                return None
+
+        # M4A metadate tag keys are case sensitive
+        case AFormat.M4A:
+            if name in tag_map.keys():
+                tag = tag_map[name]
+                tag_keys = tags.keys()
+                if tag in tag_keys:
+                    return f_out(parse_flac_m4a_tag_value(tags, tag))
                 else:
                     return None
             else:
                 return None
 
         case _:
-            tag_map = {}
             return None
 
 
@@ -179,7 +249,7 @@ def release_date(audio: FileType):
 ###########################################################################
 # other metadata
 
-def file_size(audio: MP3) -> int:
+def file_size(audio: FileType) -> int:
     if audio.filename is None:
         s = 0
     else:
@@ -190,7 +260,7 @@ def file_size(audio: MP3) -> int:
     return s
 
 
-def beatgrid(audio: MP3) -> ABeatGrid:
+def beatgrid(audio: FileType) -> ABeatGrid:
     def from_serato(bg: list) -> list[ABeatGridBPM]:
         if len(bg) < 2:
             return []
@@ -206,7 +276,7 @@ def beatgrid(audio: MP3) -> ABeatGrid:
     bpms = from_serato(bg) if bg is not None else []
     return ABeatGrid(bpms)
 
-
+# Markers2 are used at least since Serato DJ Pro 2.3 (2019)
 def get_markers(mkrs: list[EntryBase]) -> list[AMarker]:
     def from_serato(m: EntryBase) -> AMarker:
         match m:
@@ -247,15 +317,15 @@ def color(mkrs: list[EntryBase]) -> tuple[int, int, int] | None:
     color = filter(lambda e: isinstance(e, ColorEntry), mkrs)
     return head(list(map(from_serato, color)))
 
-def average_bpm(audio: MP3) -> float | None:
+def average_bpm(audio: FileType) -> float | None:
     at = get_serato_autotags(audio)
     return at['bpm'] if at is not None else None
 
-def loudness(audio: MP3) -> ALoudness | None:
+def loudness(audio: FileType) -> ALoudness | None:
     at = get_serato_autotags(audio)
     return ALoudness(at['autogain'], at['gaindb']) if isinstance(at, dict) else None
 
-def data_source(audio: MP3) -> ADataSource:
+def data_source(audio: FileType) -> ADataSource:
     an = get_serato_analysis(audio)
     v = an if an is not None else []
     return ADataSource(ASoftware.SERATO_DJ_PRO, v)
@@ -266,13 +336,13 @@ def location(audio: FileType) -> Path:
     else:
         raise ValueError("Required file path is missing")
 
-def bitrate(audio) -> int:
+def bitrate(audio: FileType) -> int:
     if audio.info is not None and audio.info.bitrate is not None:
         return audio.info.bitrate
     else:
         raise ValueError(f"No bitrate info for file {audio.filename}.")
 
-def samplerate(audio) -> int:
+def samplerate(audio: FileType) -> int:
     if audio.info is not None and audio.info.sample_rate is not None:
         return audio.info.sample_rate
     else:
@@ -280,7 +350,7 @@ def samplerate(audio) -> int:
 
 ###########################################################################
 
-def from_serato(audio: MP3) -> ATrack:
+def from_serato(audio: FileType) -> ATrack:
 
     mkrs: list[EntryBase] = get_serato_markers_v2(audio)
 
@@ -301,7 +371,7 @@ def from_serato(audio: MP3) -> ATrack:
         comments = std_comments_tag(audio),
         rating = std_tag_text('rating', audio, to_int),
         size = file_size(audio),
-        total_time = audio.info.length,
+        total_time = audio.info.length, # pyright: ignore
         bit_rate = bitrate(audio),
         sample_rate = samplerate(audio),
         location = location(audio),
