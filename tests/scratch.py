@@ -7,9 +7,11 @@ import sys
 sys.path.append('../src')
 
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import warnings
 import os
+import string
+import io
 
 # from typing import cast
 
@@ -21,7 +23,9 @@ from mutagen._file import FileType
 import struct
 import base64
 from functools import reduce
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, asdict, Field, replace
+from urllib.parse import quote, urljoin, urlsplit
+import xml.etree.ElementTree as ET
 
 import djbabel.serato.markers2
 import djbabel.serato.beatgrid
@@ -36,9 +40,11 @@ from djbabel.serato.analysis import get_serato_analysis
 from djbabel.serato.relvol import get_serato_relvol
 
 from djbabel.serato.utils import serato_metadata, parse_serato_envelope, serato_tag_marker, serato_tag_name, audio_file_type, maybe_metadata, get_serato_metadata
-from djbabel.types import ABeatGridBPM, ADataSource, AFormat, AMarkerType, AMarker, ASoftware, ATrack, ABeatGrid, ABeatGridBPM, ALoudness
+from djbabel.types import ABeatGridBPM, ADataSource, AFormat, AMarkerType, AMarker, APlaylist, ASoftware, ATrack, ABeatGridBPM, ALoudness
 
-from djbabel.serato import from_serato
+from djbabel.serato import from_serato, read_serato_playlist
+
+from djbabel.serato.crate import CrateFieldKind, take_field, take_field_type, parse_field_bool, Unknown, take_fields, created_classes, get_track_paths
 
 #####################################################
 
@@ -143,28 +149,49 @@ print(hexdump(mv2_b_mp3))
 ##########################################################
 # CRATES
 
-import io
-
-from djbabel.serato.crate import CrateFieldKind, take_field, take_field_type, parse_field_bool, Unknown, take_fields, created_classes, get_track_paths
 
 fn = Path('subcrates') / 'FEBE_MIX_80_90.crate'
+
+# pl = read_serato_playlist(fn)
+
 with open(fn, "rb") as f:
     data = f.read()
 
 fp = io.BytesIO(data)
-fields = take_fields(fp)
-
-get_track_paths(fields)
+flds = take_fields(fp)
+get_track_paths(flds)
 
 ##########################################################
+# REkordbox
 
+from djbabel.rekordbox import to_rekordbox_playlist, to_rekordbox, rb_reindex_loops
 
-# file_mp3 = Path("audio") / "The_Todd_Terry_Project_-_Weekend.mp3"
-# audio_mp3: MP3 = mutagen.File(file_mp3, easy=False) # type: ignore[reportUnknownMemberType]
+# rb_root = to_rekordbox_playlist(pl)
+# rb_root.write("test_rekordbox.xml", "utf-8", True)
 
 a1 = from_serato(audio_mp3)
 a_flac = from_serato(audio_flac)
 a_m4a = from_serato(audio_m4a)
+
+# a1_fs = fields(a1)
+# a1_rb = to_rekordbox(a1, 0)
+# root = ET.ElementTree(a1_rb)
+
+# mm = rb_reindex_loops(a1.markers, a1.data_source.software)
+
+apl = APlaylist("party", [a1, a_flac, a_m4a])
+to_rekordbox_playlist(apl, Path("test_rekordbox.xml"), Path(os.getcwd()))
+# root.write("test_rekordbox.xml", "utf-8", True)
+
+##########################################################
+fn = Path('subcrates') / 'FEBE_MIX_80_90.crate'
+fn = PureWindowsPath('subcrates') / 'FEBE_MIX_80_90.crate'
+
+pp = urlsplit(str(fn))
+uu = urljoin('file://localhost', fn.as_posix())
+
+fn = Path('subcrates') / 'FEBE_MIX_80_90.crate'
+fn2 = Path(fn)
 
 ##########################################################
 

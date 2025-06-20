@@ -1,3 +1,11 @@
+"""Manipulate Serato DJ Pro Crates
+
+A Crate consists of a list of header names and width, followed by the
+list of track paths. The full information is extracted with the help
+of the function 'take_fields'.  From the result of 'take_fields', the
+track list (paths) can be extracted with 'get_track_paths'.
+"""
+
 import struct
 from pathlib import Path
 from enum import Enum

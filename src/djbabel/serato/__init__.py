@@ -1,16 +1,20 @@
-from djbabel.serato.analysis import get_serato_analysis
-from djbabel.serato.autotags import get_serato_autotags
-from djbabel.serato.beatgrid import get_serato_beatgrid
+from .analysis import get_serato_analysis
+from .autotags import get_serato_autotags
+from .beatgrid import get_serato_beatgrid
 # from djbabel.serato.markers import get_serato_markers
-from djbabel.serato.markers2 import get_serato_markers_v2, CueEntry, BpmLockEntry, LoopEntry, ColorEntry
-from djbabel.serato.types import EntryBase
+from .markers2 import get_serato_markers_v2, CueEntry, BpmLockEntry, LoopEntry, ColorEntry
+from .types import EntryBase
 # from djbabel.serato.overview import get_serato_overview
-from ..types import ATrack, AMarkerType, AMarker, ABeatGridBPM, ABeatGrid, ADataSource, ALoudness, ASoftware, AFormat
+from ..types import ATrack, AMarkerType, AMarker, ABeatGridBPM, ADataSource, ALoudness, ASoftware, AFormat, APlaylist
 from .utils import audio_file_type, parse_color, identity
+from ..utils import path_anchor
+from .crate import take_fields, get_track_paths
 
 import base64
 from collections.abc import Callable
 from datetime import date
+import io
+import mutagen
 from mutagen.mp4 import MP4FreeForm, AtomDataType
 from mutagen._file import FileType # pyright: ignore
 import os
@@ -260,7 +264,7 @@ def file_size(audio: FileType) -> int:
     return s
 
 
-def beatgrid(audio: FileType) -> ABeatGrid:
+def beatgrid(audio: FileType) -> list[ABeatGridBPM]:
     def from_serato(bg: list) -> list[ABeatGridBPM]:
         if len(bg) < 2:
             return []
@@ -274,7 +278,7 @@ def beatgrid(audio: FileType) -> ABeatGrid:
 
     bg = get_serato_beatgrid(audio)
     bpms = from_serato(bg) if bg is not None else []
-    return ABeatGrid(bpms)
+    return bpms
 
 # Markers2 are used at least since Serato DJ Pro 2.3 (2019)
 def get_markers(mkrs: list[EntryBase]) -> list[AMarker]:
@@ -364,7 +368,7 @@ def from_serato(audio: FileType) -> ATrack:
         genre = std_tag_text('genre', audio),
         track_number = track_number(std_tag_text('track_number', audio)),
         disc_number = track_number(std_tag_text('disc_number', audio)),
-        release_data = release_date(audio),
+        release_date = release_date(audio),
         play_count = std_tag_text('play_count', audio, to_int),
         tonality = std_tag_text('tonality', audio),
         label = std_tag_text('label', audio),
@@ -387,3 +391,27 @@ def from_serato(audio: FileType) -> ATrack:
         mix = None,
         date_added = None
     )
+
+def read_serato_playlist(crate: Path, ancor: str | None = None) -> APlaylist:
+    """Read a Serato DJ Pro Crate.
+
+    Args:
+    -----
+      crate: Crate path
+      ancor: Path ancor to add to the track paths in the crate
+    """
+    with open(crate, "rb") as f:
+        data = f.read()
+
+    fp = io.BytesIO(data)
+    paths = get_track_paths(take_fields(fp))
+    audios = []
+    for p in paths:
+        a = mutagen.File(ancor + p if ancor is not None else p, easy=False) # pyright: ignore
+        if a is None:
+            print(f'File {p} could not be read.')
+        else:
+            audios = audios + a
+    name = crate.stem
+    atrks = list(map(from_serato, audios))
+    return APlaylist(name, atrks)

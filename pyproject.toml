@@ -7,7 +7,7 @@ name = "djbabel"
 authors = [
   { name="Federico Beffa", email="beffa@fbengineering.ch" },
 ]
-description = "Python library for inteaction with DJ software"
+description = "DJ Software playlists convertion tool"
 # readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -25,6 +25,10 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = ["pytest"]
+
+[options.entry_points]
+console_scripts =
+    djbabel = djbabel.cli:main
 
 [tool.pytest.ini_options]
 pythonpath = "src"
