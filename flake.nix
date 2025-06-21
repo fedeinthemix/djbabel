@@ -34,9 +34,10 @@
 
         release = pkgs.${system}.mkShell {
           packages = [
+            pkgs.${system}.hatch
             (pkgs.${system}.python3.withPackages (ps: with ps; [
               # dependencies
-              mutagoen
+              mutagen
               pillow
               pytest
             ]))
