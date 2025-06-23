@@ -1,9 +1,10 @@
 from ..types import APlaylist, ASoftware, ATrack, AFormat, AMarkerType, AMarker, ABeatGridBPM
-from ..utils import CLASSIC2ABBREV_KEY_MAP, path_anchor, ms_to_s
+from ..utils import CLASSIC2ABBREV_KEY_MAP, ms_to_s
 
 from dataclasses import fields, Field, replace
 from datetime import date
 from functools import reduce
+from math import ceil
 from pathlib import Path
 import typing
 import types
@@ -102,10 +103,10 @@ def rb_attr_name(s: str) -> str:
     else:
         return ''.join(map(lambda w: w.capitalize(), s.split('_')))
 
-def rb_attr_location(p: Path, ancor:Path | None=None, base_url='file://localhost/') -> str:
+def rb_attr_location(p: Path, base_url='file://localhost/') -> str:
     """Convert a root-less Path into a full URL as used by Rekordbox.
     """
-    return urljoin(base_url+path_anchor(ancor), quote(p.as_posix()))
+    return urljoin(base_url, quote(p.as_posix()))
 
 def rb_attr_tonality(t: str) -> str:
     """ATrack tonality format (classic) to Rekordbox abbreviated one.
@@ -138,20 +139,20 @@ def rb_attr_color(c: tuple[int,int,int], source: ASoftware) -> str:
         return RB_DEFAULT_COLOR
 
 
-def rb_attr(at: ATrack, f: Field, tid: int, ancor: Path | None=None):
+def rb_attr(at: ATrack, f: Field, tid: int):
     """Convert the ATrack `at` field `f` data into a (name, value) Rekordbox tuple.
 
     Assign `tid` as the `TrackID` number.
     """
     v = getattr(at, f.name)
     if f.name == 'total_time':
-        return [( rb_attr_name(f.name), str(int(v)) if v is not None else "0")]
+        return [( rb_attr_name(f.name), str(ceil(v)) if v is not None else "0")]
     elif f.name == 'bit_rate':
         return [( rb_attr_name(f.name), str(int(v/1000)) if v is not None else "0")]
     elif f.name == 'release_date':
         return [( rb_attr_name(f.name), str(v.year) if v is not None else "0")]
     elif f.name == 'location':
-        return [( rb_attr_name(f.name), rb_attr_location(v, ancor))]
+        return [( rb_attr_name(f.name), rb_attr_location(v))]
     elif f.name == 'aformat':
         return [( rb_attr_name(f.name), REKORDBOX_AFORMAT_MAP[v])]
     elif f.name == 'tonality':
@@ -169,7 +170,7 @@ def rb_attr(at: ATrack, f: Field, tid: int, ancor: Path | None=None):
     elif is_float_or_none(f.type):
         return [( rb_attr_name(f.name), str(v) if v is not None else "0")]
     elif is_date_or_none(f.type):
-        return [( rb_attr_name(f.name), v.strftime('%Y-%m-%d') if v is not None else "")]
+        return [( rb_attr_name(f.name), v.strftime('%Y-%m-%d') if v is not None else date.today().strftime('%Y-%m-%d'))]
     else:
         return []
 
@@ -245,11 +246,11 @@ def rb_battito(bpms: list[ABeatGridBPM], idx: int, battiti: int = 4):
         battito = (battito + dbeats) % battiti
     return int(battito)
 
-def to_rekordbox(at: ATrack, tid: int, ancor:Path | None=None) -> ET.Element:
+def to_rekordbox(at: ATrack, tid: int) -> ET.Element:
     """Convert an ATrack instance into a Rekordbox XML element.
     """
     fs = fields(at)
-    attrs = dict(reduce(lambda acc, f: acc + rb_attr(at, f, tid, ancor),  fs, []))
+    attrs = dict(reduce(lambda acc, f: acc + rb_attr(at, f, tid),  fs, []))
     trk = ET.Element("TRACK", **attrs)
     for m in rb_reindex_loops(at.markers, at.data_source.software):
         trk.append(rb_position_mark(m))
@@ -258,31 +259,26 @@ def to_rekordbox(at: ATrack, tid: int, ancor:Path | None=None) -> ET.Element:
         trk.append(rb_tempo(m, battito))
     return trk
 
-def to_rekordbox_playlist(playlist: APlaylist, ofile:Path, ancor: Path | None = None) -> None:
+def to_rekordbox_playlist(playlist: APlaylist, ofile:Path, rb_version: str = "7.1.3") -> None:
     """Generate a RekordBox playlist XML ElementTree.
 
     Args:
     -----
       playlist: the playlist to convert.
-    
-      ancor: The path of track files are stored without the ancor
-        (root and, on Windows drive). With this parameter it can be
-        specified. If None the OS default is used: '/' for POSIX,
-        'C:\\' for Windows.
-
+      ofile: output file name.
     """
     # XML tree root
     dj_pl = ET.Element('DJ_PLAYLISTS', Version="1.0.0")
     root = ET.ElementTree(dj_pl)
     # PRODUCT sub-element
-    prod = ET.Element('PRODUCT', Name="rekordbox", Version="6.6.2", Company="AlphaTheta")
+    prod = ET.Element('PRODUCT', Name="rekordbox", Version=rb_version, Company="AlphaTheta")
     dj_pl.append(prod)
     # COLLECTION sub-element
     coll = ET.Element('COLLECTION', Entries=str(playlist.entries))
     dj_pl.append(coll)
     # TRACK SUb-sub-elements
     for i, at in enumerate(playlist.tracks):
-        e = to_rekordbox(at, i, ancor)
+        e = to_rekordbox(at, i)
         dj_pl.append(e)
     # PLAYLIST sub-element
     pl = ET.Element('PLAYLISTS')

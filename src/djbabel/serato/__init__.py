@@ -7,7 +7,7 @@ from .types import EntryBase
 # from djbabel.serato.overview import get_serato_overview
 from ..types import ATrack, AMarkerType, AMarker, ABeatGridBPM, ADataSource, ALoudness, ASoftware, AFormat, APlaylist
 from .utils import audio_file_type, parse_color, identity
-from ..utils import path_anchor
+from ..utils import path_anchor, get_leading_base64_part
 from .crate import take_fields, get_track_paths
 
 import base64
@@ -64,13 +64,11 @@ map_to_flac_text_tag = {
     'release_date' : 'date',
     'label' : 'organization',
     'track_number' : 'tracknumber', # may be, e.g. "1/10"
-
     ## community defined
     'disc_number': 'discnumber', # may be, e.g. "1/2"
     'remixer': 'remixer',
     # 'comments' : 'COMMENT', # special handling
     'rating': 'rating', # XXX field .rating!!
-
     ## other
     'tonality' : 'initialkey',
     # 'average_bpm' : 'BPM', # this is rounded, use Serato data instead
@@ -93,13 +91,10 @@ map_to_mp4_tag = {
     'remixer': '©rem',     # not a standard MP4 tag, often custom or using '©too'
     'rating': 'rtng',      # rating (e.g., 0-100)
     # 'play_count': 'pcnt',   # play count (specific to Apple/iTunes)
-    # XXX temporarily disable as the content is of type
-    # XXX [MP4FreeForm(b'MADRtrak*\xc2\xb1\xc2\xb4\x07k\x0b\x05\xc2\x80', <AtomDataType.UTF8: 1>)]
     'play_count': '----:com.serato.dj:playcount', # used by Serato
     # 'tonality': '©key',    # not a standard MP4 tag, often custom (e.g., 'key')
     'tonality' : '----:com.apple.iTunes:initialkey', # used by Serato
     # 'comments': '©cmt',   # comments
-    # BPM is often stored as a custom tag or user data
 }
 
 map_to_aformat = {
@@ -141,6 +136,15 @@ def track_number(s: str | None) -> int | None:
     else:
         return None
 
+def parse_m4a_play_count(data: MP4FreeForm) -> int:
+    ds = get_leading_base64_part(bytes(data))
+    if len(ds) % 4 == 1:
+        padding = b'B=='
+    else:
+        padding = b'=' * (-len(ds) % 4)
+    payload = base64.b64decode(ds + padding)
+    # first convert to int, otherwise we get a byte string.
+    return int(payload[:payload.index(b'\x00')])
 
 def parse_flac_m4a_tag_value(tags: dict[str, Any], tag: str) -> str | None:
     vs = tags[tag]
@@ -150,16 +154,12 @@ def parse_flac_m4a_tag_value(tags: dict[str, Any], tag: str) -> str | None:
             return ','.join(vs)
         # Serato play_count
         elif tag == map_to_mp4_tag['play_count'] and isinstance(v, MP4FreeForm) and v.FORMAT_TEXT ==  AtomDataType.UTF8:
-            data = bytes(v) #.replace(b'\n', b'')
-            # XXX Need to check more examples
-            # base64 format: https://datatracker.ietf.org/doc/html/rfc4648.html
-            if len(data) < 20:
-                padding = b'B' * (-len(data) %4) + b'BB=='
-            else:
-                padding = b'=' * (-len(data) % 4)
-            payload = base64.b64decode(data + padding)
-            # first convert to int, otherwise we get a byte string.
-            return str(int(payload[:payload.index(b'\x00')]))
+            try:
+                pc = parse_m4a_play_count(v)
+            except Exception as _:
+                warnings.warn("Failed to decode Serato play_count. Using 0")
+                pc = 0
+            return str(pc)
         # Serato initialkey
         elif isinstance(v, MP4FreeForm) and v.FORMAT_TEXT ==  AtomDataType.UTF8:
             return v.decode('UTF-8')
@@ -392,13 +392,13 @@ def from_serato(audio: FileType) -> ATrack:
         date_added = None
     )
 
-def read_serato_playlist(crate: Path, ancor: str | None = None) -> APlaylist:
+def read_serato_playlist(crate: Path, anchor: Path | None = None, relative: Path | None = None) -> APlaylist:
     """Read a Serato DJ Pro Crate.
 
     Args:
     -----
       crate: Crate path
-      ancor: Path ancor to add to the track paths in the crate
+      anchor: Path anchor to add to the track paths in the crate
     """
     with open(crate, "rb") as f:
         data = f.read()
@@ -407,11 +407,12 @@ def read_serato_playlist(crate: Path, ancor: str | None = None) -> APlaylist:
     paths = get_track_paths(take_fields(fp))
     audios = []
     for p in paths:
-        a = mutagen.File(ancor + p if ancor is not None else p, easy=False) # pyright: ignore
+        pr = p.relative_to(relative) if relative is not None else p
+        a = mutagen.File(path_anchor(anchor) / pr if anchor is not None else pr, easy=False) # pyright: ignore
         if a is None:
             print(f'File {p} could not be read.')
         else:
-            audios = audios + a
+            audios = audios + [a]
     name = crate.stem
     atrks = list(map(from_serato, audios))
     return APlaylist(name, atrks)

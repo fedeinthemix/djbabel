@@ -1,3 +1,4 @@
+import itertools
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
@@ -22,6 +23,19 @@ def s_to_ms(x):
     """Seconds to milli-seconds
     """
     return x*1000
+
+# base64 format: https://datatracker.ietf.org/doc/html/rfc4648.html
+def get_leading_base64_part(byte_string: bytes) -> bytes:
+    """Base64 leading part of a byte string.
+    """
+    base64_chars = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+
+    def is_base64_char(byte_char: int) -> bool:
+        return byte_char in base64_chars
+
+    result_bytes = bytearray(itertools.takewhile(is_base64_char, iter(byte_string)))
+
+    return bytes(result_bytes)
 
 # Map the classic musical key into the Camelot one.
 CLASSIC2CAMLEOT_KEY_MAP = {
