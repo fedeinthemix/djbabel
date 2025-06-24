@@ -11,6 +11,9 @@ import types
 from urllib.parse import quote, urljoin
 import xml.etree.ElementTree as ET
 
+#######################################################################
+# Mappings
+
 # includes mapping of fields from ATrack to the Rekordbox XML name of
 # only those fields whose mapping is not a simple conversion to
 # CamelCase. The later are mapped via a function.
@@ -69,12 +72,33 @@ REKORDBOX_MARKERTYPE_MAP = {
 
 # Mapping from AFormat to Rekordbox string.
 REKORDBOX_AFORMAT_MAP = {
-    AFormat.MP3 : 'Mp3-Datei',
-    AFormat.FLAC : 'Flac-Datei', # XXX find correct string
-    AFormat.M4A : 'Mp4-Datai',  # XXX find correct string
-    # AFormat.WAV : 'Wav-Datei',
+    AFormat.MP3 : 'MP3 File',
+    AFormat.FLAC : 'FLAC File',
+    AFormat.M4A : 'MP4 File',
+    # AFormat.WAV : 'WAV FILE',
 }
-        
+
+# RB7 Cue point colors:
+# Green (Default for Hot Cue 1): R:16 G:177 B:118 (or sometimes a slightly brighter green like R:0 G:255 B:0)
+# Orange: R:255 G:128 B:0
+# Red: R:255 G:0 B:0
+# Yellow: R:255 G:255 B:0
+# Light Blue/Cyan: R:0 G:255 B:255
+# Blue: R:0 G:0 B:255
+# Purple/Magenta: R:255 G:0 B:255
+# White: R:255 G:255 B:255
+# Dark Green: R:0 G:128 B:0
+# Dark Orange/Brown: R:128 G:64 B:0
+# Dark Red/Maroon: R:128 G:0 B:0
+# Dark Yellow/Olive: R:128 G:128 B:0
+# Dark Cyan/Teal: R:0 G:128 B:128
+# Dark Blue/Navy: R:0 G:0 B:128
+# Dark Purple/Indigo: R:128 G:0 B:128
+# Gray: R:128 G:128 B:128 (or R:192 G:192 B:192 for a lighter gray)
+
+#######################################################################
+# Helpers
+
 def make_or_none_predicate(_type: type):
     """Make a predicate function recognizing the types `_type` or `_type | None`.
     """
@@ -94,6 +118,9 @@ is_str_or_none = make_or_none_predicate(str)
 is_int_or_none = make_or_none_predicate(int)
 is_float_or_none = make_or_none_predicate(float)
 is_date_or_none = make_or_none_predicate(date)
+
+#######################################################################
+# Main functions
 
 def rb_attr_name(s: str) -> str:
     """Convert an ATrack field name (as a string) into the name used by Rekordbox.
@@ -209,7 +236,7 @@ def rb_reindex_loops(markers: list[AMarker], software: ASoftware):
             pass
     return new_markers
 
-
+# XXX Add color
 def rb_position_mark(m: AMarker) -> ET.Element:
     attrs = {
         'Name'  : m.name,
@@ -279,7 +306,7 @@ def to_rekordbox_playlist(playlist: APlaylist, ofile:Path, rb_version: str = "7.
     # TRACK SUb-sub-elements
     for i, at in enumerate(playlist.tracks):
         e = to_rekordbox(at, i)
-        dj_pl.append(e)
+        coll.append(e)
     # PLAYLIST sub-element
     pl = ET.Element('PLAYLISTS')
     dj_pl.append(pl)

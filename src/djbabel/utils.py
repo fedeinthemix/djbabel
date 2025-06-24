@@ -1,18 +1,18 @@
 import itertools
 import os
-from pathlib import Path, PurePosixPath, PureWindowsPath
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 
-def path_anchor(ancor: Path | None) -> str:
+def path_anchor(ancor: Path | None) -> PurePath:
     if ancor is None:
         match os.name:
             case 'nt':
-                return PureWindowsPath('C:\\').as_posix()
+                return PureWindowsPath('C:\\')
             case 'posix':
-                return PurePosixPath('/').as_posix()
+                return PurePosixPath('/')
             case _:
                 raise ValueError(f'OS {os.name} not supported')
     else:
-        return ancor.as_posix()
+        return ancor
 
 def ms_to_s(x):
     """Milli-seconds to seconds

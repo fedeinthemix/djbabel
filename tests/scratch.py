@@ -180,18 +180,8 @@ a_m4a = from_serato(audio_m4a)
 # mm = rb_reindex_loops(a1.markers, a1.data_source.software)
 
 apl = APlaylist("party", [a1, a_flac, a_m4a])
-to_rekordbox_playlist(apl, Path("test_rekordbox.xml"), Path(os.getcwd()))
+to_rekordbox_playlist(apl, Path("test_rekordbox.xml"))
 # root.write("test_rekordbox.xml", "utf-8", True)
-
-##########################################################
-fn = Path('subcrates') / 'FEBE_MIX_80_90.crate'
-fn = PureWindowsPath('subcrates') / 'FEBE_MIX_80_90.crate'
-
-pp = urlsplit(str(fn))
-uu = urljoin('file://localhost', fn.as_posix())
-
-fn = Path('subcrates') / 'FEBE_MIX_80_90.crate'
-fn2 = Path(fn)
 
 ##########################################################
 

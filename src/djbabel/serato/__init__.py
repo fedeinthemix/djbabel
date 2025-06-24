@@ -408,7 +408,7 @@ def read_serato_playlist(crate: Path, anchor: Path | None = None, relative: Path
     audios = []
     for p in paths:
         pr = p.relative_to(relative) if relative is not None else p
-        a = mutagen.File(path_anchor(anchor) / pr if anchor is not None else pr, easy=False) # pyright: ignore
+        a = mutagen.File(path_anchor(anchor) / pr, easy=False) # pyright: ignore
         if a is None:
             print(f'File {p} could not be read.')
         else:
