@@ -7,7 +7,7 @@ from .types import EntryBase
 # from djbabel.serato.overview import get_serato_overview
 from ..types import ATrack, AMarkerType, AMarker, ABeatGridBPM, ADataSource, ALoudness, ASoftware, AFormat, APlaylist
 from .utils import audio_file_type, parse_color, identity
-from ..utils import path_anchor, get_leading_base64_part
+from ..utils import path_anchor, get_leading_base64_part, closest_color_perceptual, ms_to_s
 from .crate import take_fields, get_track_paths
 
 import base64
@@ -285,9 +285,11 @@ def get_markers(mkrs: list[EntryBase]) -> list[AMarker]:
     def from_serato(m: EntryBase) -> AMarker:
         match m:
             case CueEntry(_, index, position, _, color, _, name): # pyright: ignore [reportGeneralTypeIssues]
-                return AMarker(name, parse_color(color), position, None, AMarkerType.CUE, index, False)
+                color_rbg = parse_color(color)
+                return AMarker(name, closest_color_perceptual(color_rbg), ms_to_s(position), None, AMarkerType.CUE, index, False)
             case LoopEntry(_, index, start, end, _, _, color, _, locked, name): # pyright: ignore [reportGeneralTypeIssues]
-                return AMarker(name, parse_color(color), start, end, AMarkerType.LOOP, index, locked)
+                color_rbg = parse_color(color)
+                return AMarker(name, closest_color_perceptual(color_rbg), ms_to_s(start), ms_to_s(end), AMarkerType.LOOP, index, locked)
             # Flip not implemented. They are Serato specific.
             # case djbabel.serato.markers2..FlipEntry():
             case _:

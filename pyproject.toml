@@ -11,8 +11,9 @@ description = "DJ Software playlists convertion tool"
 # readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "basic-colormath",
     "mutagen",
-    "pillow"
+    "pillow", # only used in ./src/djbabel/serato/overview.py
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

@@ -35,9 +35,9 @@ def parse_input_format(arg: str) -> ADataSource:
 
 def parse_output_format(arg: str) -> ADataSource:
     match arg:
-        case 'rb6':
+        case 'rb7':
             # The version defined here is written in the XLM file.
-            # Use a released version compatible with the RB6 format.
+            # Use a released version compatible with the RB7 format.
             return ADataSource(ASoftware.REKORDBOX, [7,1,3])
         case _:
             raise ValueError(f'Output format {arg} not supported')
@@ -54,7 +54,7 @@ def get_playlist(filepath: Path, source: ADataSource, anchor: Path | None, relat
 def create_playlist(playlist: APlaylist, filepath: Path, target: ADataSource) -> None:
     match target:
         case ADataSource(ASoftware.REKORDBOX, ver):
-            return to_rekordbox_playlist(playlist, filepath, '.'.join(map(str,ver)))
+            return to_rekordbox_playlist(playlist, filepath, ver)
         case _:
             raise ValueError(f'Target format {target} not supported.')
 
@@ -103,8 +103,8 @@ def main():
     parser.add_argument('-s', '--source', type=str, choices=['sdjpro'],
                         default='sdjpro',
                         help='source playlist format')
-    parser.add_argument('-t', '--target', type=str, choices=['rb6'],
-                        default='rb6',
+    parser.add_argument('-t', '--target', type=str, choices=['rb7'],
+                        default='rb7',
                         help='target playlist format')
     parser.add_argument('-o', '--ofile', type=Path,
                         help='output file name')

@@ -7,6 +7,7 @@
 python3Packages,
 # python,
 # hatchling,
+basic-colormath,
 }:
 
 python3Packages.buildPythonPackage rec {
@@ -17,6 +18,7 @@ python3Packages.buildPythonPackage rec {
   src = ./.;
  
   dependencies = with python3Packages; [
+    basic-colormath
     mutagen
     pillow
   ];

@@ -1,6 +1,6 @@
 from datetime import date
 from pathlib import Path
-from enum import StrEnum, auto
+from enum import Enum, StrEnum, auto
 from dataclasses import dataclass, field
 
 class AFormat(StrEnum):
@@ -10,6 +10,27 @@ class AFormat(StrEnum):
     M4A = auto()
     FLAC = auto()
 
+# The beatgrid position time for a given beat is not identical in the
+# various softwares.  For example, given a beatgrid prepared with
+# Serato DJ Pro 3.3.2, when I convert it to a Rekordbox 7.1.3 XML
+# file, the beatgrid is shifted. An analysis of 2 files suggests that
+# to the Serato positions, to get a good grid in RB7 we have to add
+# dt=0.048 s.
+#
+# Given the dt sfrom Serato to each other software, we should be able
+# to compute the dt for an arbitrary conversion as:
+#
+# dt_traktor_to_rb7 = -dt_s_to_traktor + dt_s_to_rb7
+#
+# Note: dt_Y_to_X = -dt_X_to_Y.
+#
+# The positions in the ABeatGridBPM class can therefore be normalized
+# to the Serato values at import time (-dt_s_to_source_format). At
+# export time, we then simply convert from Serato to the export format
+# (dt_s_to_target_format).
+#
+# Actually, as reference we should use the more accurate software: RB7
+# or Traktor 4?
 @dataclass
 class ABeatGridBPM:
     position: float # [s]
@@ -23,12 +44,49 @@ class AMarkerType(StrEnum):
     FADE_IN = auto()
     FADE_OUT = auto()
 
+class AMarkerColors(Enum):
+    """16 Cue colors (taken from Serato DJ Pro).
+
+    The various DJ Software offer a palette to color cue points. It
+    seems that if we spcecify a color not in the palette, the color
+    may not be reproduced correctly (e.g., exporting Rekordbox
+    playlists to CDJs). Hence, we define a palette and convert colors
+    to the closest (as perceived by humans) in this palette. We chose
+    a subset of 16 colors from Serato DJ Pro as these are
+    distinguishable colors (as opposed to some other software
+    palettes).
+
+    When we generate a playlist for a piece of software, we map this
+    discrete palette to the closest color in its palette.
+
+    """
+    RED = (204, 0, 0)
+    RED_ORANGE =  (204, 68, 0)
+    ORANGE =  (204, 136, 0)
+    YELLOW =  (204, 204, 0)
+    LIME_gREEN =  (136, 204, 0)
+    DARK_GREEN =  (68, 204, 0)
+    BRIGHT_GREEN =  (0, 204, 0)
+    LIGHT_GREEN =  (0, 204, 68)
+    TEAL =  (0, 204, 136)
+    CYAN =  (0, 204, 204)
+    SKY_BLUE =  (0, 136, 204)
+    BLUE =  (0, 68, 204) # DARK_CYAN
+    DARK_BLUE =  (0, 0, 204)
+    # INDIGO =  (68, 0, 204)
+    VIOLET =  (136, 0, 204)
+    MAGENTA =  (204, 0, 204)
+    HOT_PING =  (204, 0, 136)
+    # CRIMSON =  (204, 0, 68)
+
+# Marker start and end also have to be normalized and shifted as
+# ABeatGridBPM position.
 @dataclass
 class AMarker:
     name: str
-    color: tuple[int, int, int] | None # RGB
-    start: float # [ms]
-    end: float | None # [ms]
+    color: AMarkerColors | None # RGB
+    start: float # [s]
+    end: float | None # [s]
     kind: AMarkerType
     index: int # which hotcue pad
     locked: bool # used, e.g., by loops in Serato DJ
@@ -47,6 +105,20 @@ class ASoftware(StrEnum):
     SERATO_DJ_PRO = auto()
     REKORDBOX = auto()
 
+# version is the number in the Serato Marker2 analisys tag. However,
+# the meaning of this value is unclear ([2,1] for MP3 and [0,1,0] for
+# FLAC and M4A).
+#
+# Currently versioin is unused.
+#
+# software is used by:
+#
+# - rb_attr_color: to verify if source and target are the same. Will
+#                  ever be useful?
+#
+# - rb_reindex_loops: to check if marker indices come from Serato DJ
+#                     Pro which uses different index-spaces for cues
+#                     and from loops while other programs use the same.
 @dataclass
 class ADataSource:
     software: ASoftware

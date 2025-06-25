@@ -1,6 +1,14 @@
+from basic_colormath import get_delta_e
+from dataclasses import replace
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
+
 import itertools
 import os
-from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
+
+from .types import ADataSource, AMarkerColors, ASoftware, ATrack
+
+#########################################################################
+# Helper functions
 
 def path_anchor(ancor: Path | None) -> PurePath:
     if ancor is None:
@@ -36,6 +44,54 @@ def get_leading_base64_part(byte_string: bytes) -> bytes:
     result_bytes = bytearray(itertools.takewhile(is_base64_char, iter(byte_string)))
 
     return bytes(result_bytes)
+
+
+def closest_color_perceptual(target_rgb: tuple[int,int,int]) -> AMarkerColors:
+    """Given an RGB color, find the closest in the AMarkerColors palette.
+    """
+    min_delta_e = float('inf')
+    closest_color = None
+
+    for color_rgb in AMarkerColors:
+        # Calculate Delta E 2000
+        delta_e = get_delta_e(target_rgb, color_rgb.value)
+
+        if delta_e < min_delta_e:
+            min_delta_e = delta_e
+            closest_color = color_rgb
+    return closest_color # pyright: ignore[reportReturnType] # will never be None
+
+
+def beatgrid_offset(target: ADataSource) -> float:
+    """BeatGrid offset relative to Serato DJ Pro 3.3.2 in seconds.
+
+    dt = t_target - t_serato_dj_pro
+    """
+    match target:
+        case ADataSource(ASoftware.SERATO_DJ_PRO, _):
+            return 0.0
+        case ADataSource(ASoftware.REKORDBOX, _):
+            return 0.048
+        case _:
+            raise ValueError(f'{target.software} currently not supported.')
+
+def adjust_time(at: ATrack, target: ADataSource) -> ATrack:
+    """Adjust the markers and beatgrid time according to target.
+    """
+    offset = beatgrid_offset(target)
+    new_markers = []
+    for m in at.markers:
+        new_start = m.start + offset
+        new_end = (m.end + offset) if m.end is not None else None
+        new_markers = new_markers + [replace(m, start=new_start, end=new_end)]
+    new_beatgrid = []
+    for bg in at.beatgrid:
+        new_position = bg.position + offset
+        new_beatgrid = new_beatgrid + [replace(bg,position=new_position)]
+    return replace(at, markers=new_markers, beatgrid=new_beatgrid)
+
+###############################################################################
+# Key Maps
 
 # Map the classic musical key into the Camelot one.
 CLASSIC2CAMLEOT_KEY_MAP = {

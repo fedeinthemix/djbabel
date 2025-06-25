@@ -31,7 +31,7 @@ import djbabel.serato.markers2
 import djbabel.serato.beatgrid
 from djbabel.serato.markers2 import CueEntry, get_serato_markers_v2, ColorEntry, BpmLockEntry
 from djbabel.serato.utils import audio_file_type, readbytes, serato_metadata
-from djbabel.serato.types import SeratoTags, EntryBase
+from djbabel.serato.types import STag, SeratoTags, EntryBase
 from djbabel.serato.autotags import get_serato_autotags
 from djbabel.serato.overview import get_serato_overview
 from djbabel.serato.beatgrid import get_serato_beatgrid
@@ -45,6 +45,8 @@ from djbabel.types import ABeatGridBPM, ADataSource, AFormat, AMarkerType, AMark
 from djbabel.serato import from_serato, read_serato_playlist
 
 from djbabel.serato.crate import CrateFieldKind, take_field, take_field_type, parse_field_bool, Unknown, take_fields, created_classes, get_track_paths
+
+from djbabel.utils import beatgrid_offset
 
 #####################################################
 
@@ -123,7 +125,7 @@ print(hexdump(m_b_m4a[6:], 19))
 # start/stop  time == ff ff ff ff -> not set, other data not meaninful
 #
 #####################################################
-
+# Serato DJ Pro decoding
 
 def hexdump(data: bytes, length=16, sep=' '):
     """
@@ -149,7 +151,6 @@ print(hexdump(mv2_b_mp3))
 ##########################################################
 # CRATES
 
-
 fn = Path('subcrates') / 'FEBE_MIX_80_90.crate'
 
 # pl = read_serato_playlist(fn)
@@ -164,24 +165,202 @@ get_track_paths(flds)
 ##########################################################
 # REkordbox
 
-from djbabel.rekordbox import to_rekordbox_playlist, to_rekordbox, rb_reindex_loops
-
-# rb_root = to_rekordbox_playlist(pl)
-# rb_root.write("test_rekordbox.xml", "utf-8", True)
+from djbabel.rekordbox import to_rekordbox_playlist
 
 a1 = from_serato(audio_mp3)
 a_flac = from_serato(audio_flac)
 a_m4a = from_serato(audio_m4a)
 
-# a1_fs = fields(a1)
-# a1_rb = to_rekordbox(a1, 0)
-# root = ET.ElementTree(a1_rb)
-
-# mm = rb_reindex_loops(a1.markers, a1.data_source.software)
-
 apl = APlaylist("party", [a1, a_flac, a_m4a])
-to_rekordbox_playlist(apl, Path("test_rekordbox.xml"))
-# root.write("test_rekordbox.xml", "utf-8", True)
+to_rekordbox_playlist(apl, Path("test_rekordbox.xml"), [7,1,3])
+
+# beatgrid_offset(ADataSource(ASoftware.REKORDBOX, [7,1,3]))
+
+##########################################################
+
+get_serato_metadata(SeratoTags.ANALYSIS, lambda x: x)(audio_flac)
+
+tag_name = SeratoTags.ANALYSIS.value.names[AFormat.FLAC]
+data = bytes(audio_flac.tags[tag_name][0], 'ascii')
+
+b64data = data.replace(b'\n', b'')
+padding = b'A==' if len(b64data) % 4 == 1 else (b'=' * (-len(b64data) % 4))
+decoded = base64.b64decode(b64data + padding)
+
+tag_name = SeratoTags.ANALYSIS.value.names[AFormat.M4A]
+data = bytes(audio_m4a.tags[tag_name][0])
+b64data = data.replace(b'\n', b'')
+padding = b'A==' if len(b64data) % 4 == 1 else (b'=' * (-len(b64data) % 4))
+decoded = base64.b64decode(b64data + padding)
+
+tag_name = SeratoTags.ANALYSIS.value.names[AFormat.MP3]
+data = audio_mp3.tags[tag_name]
+
+##########################################################
+# BeatGrid Shift
+
+from statistics import mean
+
+## Reference: Serato DJ Pro 3.3.2
+### beat-marks:
+# <TEMPO Inizio="7.403456687927246" Bpm="98.20976257122028" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="34.28469467163086" Bpm="98.09374219446505" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="46.51789093017578" Bpm="98.53031180993845" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="51.389488220214844" Bpm="98.25032052800319" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="80.7023696899414" Bpm="97.19731741870298" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="85.64077758789062" Bpm="98.18385900845938" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="124.7510757446289" Bpm="99.21178785890902" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="127.1701431274414" Bpm="97.95985478515789" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="139.42005920410156" Bpm="98.25037167212896" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="154.0764923095703" Bpm="99.38418182622377" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="156.49136352539062" Bpm="97.89297188430079" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="168.74964904785156" Bpm="97.52804251176576" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="171.21047973632812" Bpm="98.41841140325629" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="178.52618408203125" Bpm="98.19455398670232" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="185.8585662841797" Bpm="97.52683304913967" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="188.31942749023438" Bpm="98.11053828232454" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="207.88919067382812" Bpm="98.16074666034257" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="232.33888244628906" Bpm="98.7858899192624" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="237.1978759765625" Bpm="98.23630904329985" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="256.7425842285156" Bpm="97.527437776703" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="259.20343017578125" Bpm="97.85971688534056" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="271.46588134765625" Bpm="98.70034356713678" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="281.1922912597656" Bpm="98.23646243207794" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="290.9646301269531" Bpm="97.527437776703" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="295.8863220214844" Bpm="98.17335784932031" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="354.55804443359375" Bpm="97.94344569055166" Metro="4/4" Battito="1" />
+# <TEMPO Inizio="359.4588317871094" Bpm="98.16637420654297" Metro="4/4" Battito="1" />
+
+tt_orig = [
+    7.403456687927246,
+    34.28469467163086,
+    46.51789093017578,
+    51.389488220214844,
+    80.7023696899414,
+    85.64077758789062,
+    124.7510757446289,
+    127.1701431274414,
+    139.42005920410156,
+    154.0764923095703,
+    156.49136352539062,
+    168.74964904785156,
+    171.21047973632812,
+    178.52618408203125,
+    185.8585662841797,
+    188.31942749023438,
+    207.88919067382812,
+    232.33888244628906,
+    237.1978759765625,
+    256.7425842285156,
+    259.20343017578125,
+    271.46588134765625,
+    281.1922912597656,
+    290.9646301269531,
+    295.8863220214844,
+    354.55804443359375,
+    359.4588317871094,
+]
+
+## imported in RekordBox 7.1.3
+### Manual Shift to correct grid
+# <TEMPO Inizio="0.116" Bpm="98.21" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="34.330" Bpm="98.09" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="46.563" Bpm="98.53" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="51.434" Bpm="98.25" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="80.747" Bpm="97.20" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="81.365" Bpm="97.20" Metro="4/4" Battito="2"/>
+# <TEMPO Inizio="85.686" Bpm="98.18" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="121.741" Bpm="98.18" Metro="4/4" Battito="4"/>
+# <TEMPO Inizio="124.796" Bpm="99.21" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="127.215" Bpm="97.96" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="139.465" Bpm="98.25" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="154.121" Bpm="99.38" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="156.536" Bpm="97.89" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="168.795" Bpm="97.53" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="171.255" Bpm="98.42" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="178.571" Bpm="98.19" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="185.904" Bpm="97.53" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="188.364" Bpm="98.11" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="207.934" Bpm="98.16" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="232.384" Bpm="98.79" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="237.243" Bpm="98.24" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="256.788" Bpm="97.53" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="259.248" Bpm="97.86" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="271.511" Bpm="98.70" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="281.237" Bpm="98.24" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="291.010" Bpm="97.53" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="295.931" Bpm="98.17" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="341.769" Bpm="98.17" Metro="4/4" Battito="4"/>
+# <TEMPO Inizio="354.603" Bpm="97.94" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="359.504" Bpm="98.17" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="391.287" Bpm="98.17" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="405.956" Bpm="98.17" Metro="4/4" Battito="1"/>
+# <TEMPO Inizio="420.625" Bpm="98.17" Metro="4/4" Battito="1"/>
+
+tt_shifted = [
+    0.116,
+    34.330,
+    46.563,
+    51.434,
+    80.747,
+    81.365,
+    85.686,
+    121.741,
+    124.796,
+    127.215,
+    139.465,
+    154.121,
+    156.536,
+    168.795,
+    171.255,
+    178.571,
+    185.904,
+    188.364,
+    207.934,
+    232.384,
+    237.243,
+    256.788,
+    259.248,
+    271.511,
+    281.237,
+    291.010,
+    295.931,
+    341.769,
+    354.603,
+    359.504,
+    391.287,
+    405.956,
+    420.625,
+]
+
+dt_shift_s2rb7 = mean([
+    tt_shifted[1] - tt_orig[1],
+    tt_shifted[2] - tt_orig[2],
+    tt_shifted[3] - tt_orig[3]
+])
+
+# From this data it seems that, to correct the beatgrid from Serato to RB7
+# we have to add
+# dt_shift_s2rb7 = 0.045 # s
+
+## data from "High Precision" beatgrid.
+## Essentially it puts a TEMPO marker on each beat. Taking a couple that
+## were present in the original
+tt_high_prec = [
+    7.450,
+    34.340
+]
+
+dt_high_pres = mean([
+    # paid in full
+    tt_high_prec[0] - tt_orig[0],
+    tt_high_prec[1] - tt_orig[1],
+    # sueno latino
+    319.877 - 319.8345947265625,
+    0.04823291015622999
+    ])
+
+## 0.048121706008909415 -> 0.048
 
 ##########################################################
 

@@ -1,5 +1,5 @@
-from ..types import APlaylist, ASoftware, ATrack, AFormat, AMarkerType, AMarker, ABeatGridBPM
-from ..utils import CLASSIC2ABBREV_KEY_MAP, ms_to_s
+from ..types import ADataSource, APlaylist, ASoftware, ATrack, AFormat, AMarkerType, AMarker, ABeatGridBPM, AMarkerColors
+from ..utils import CLASSIC2ABBREV_KEY_MAP, adjust_time
 
 from dataclasses import fields, Field, replace
 from datetime import date
@@ -78,24 +78,6 @@ REKORDBOX_AFORMAT_MAP = {
     # AFormat.WAV : 'WAV FILE',
 }
 
-# RB7 Cue point colors:
-# Green (Default for Hot Cue 1): R:16 G:177 B:118 (or sometimes a slightly brighter green like R:0 G:255 B:0)
-# Orange: R:255 G:128 B:0
-# Red: R:255 G:0 B:0
-# Yellow: R:255 G:255 B:0
-# Light Blue/Cyan: R:0 G:255 B:255
-# Blue: R:0 G:0 B:255
-# Purple/Magenta: R:255 G:0 B:255
-# White: R:255 G:255 B:255
-# Dark Green: R:0 G:128 B:0
-# Dark Orange/Brown: R:128 G:64 B:0
-# Dark Red/Maroon: R:128 G:0 B:0
-# Dark Yellow/Olive: R:128 G:128 B:0
-# Dark Cyan/Teal: R:0 G:128 B:128
-# Dark Blue/Navy: R:0 G:0 B:128
-# Dark Purple/Indigo: R:128 G:0 B:128
-# Gray: R:128 G:128 B:128 (or R:192 G:192 B:192 for a lighter gray)
-
 #######################################################################
 # Helpers
 
@@ -121,6 +103,8 @@ is_date_or_none = make_or_none_predicate(date)
 
 #######################################################################
 # Main functions
+
+##### Attributes ##########
 
 def rb_attr_name(s: str) -> str:
     """Convert an ATrack field name (as a string) into the name used by Rekordbox.
@@ -201,7 +185,9 @@ def rb_attr(at: ATrack, f: Field, tid: int):
     else:
         return []
 
-def rb_reindex_loops(markers: list[AMarker], software: ASoftware):
+##### Markers ##########
+
+def rb_reindex_loops(markers: list[AMarker], software: ASoftware) -> list[AMarker]:
     """Reindex Serato DJ Pro loops.
 
     In Serato loop indexes are independent from cue ones.
@@ -233,20 +219,65 @@ def rb_reindex_loops(markers: list[AMarker], software: ASoftware):
             for m in loops:
                 new_markers = new_markers + [replace(m, index = i + m.index)]
         case _:
-            pass
+            new_markers = markers
     return new_markers
 
-# XXX Add color
+def rb_marker_color(c: AMarkerColors) -> tuple[int,int,int]:
+    match c:
+        case AMarkerColors.RED:
+            return (230, 40, 40)
+        case AMarkerColors.RED_ORANGE:
+            return (224, 100, 27)
+        case AMarkerColors.ORANGE:
+            return (224, 100, 27)
+        case AMarkerColors.YELLOW:
+            return (180, 190, 4)
+        case AMarkerColors.LIME_gREEN:
+            return (165, 225, 22)
+        case AMarkerColors.DARK_GREEN:
+            return (40, 226, 20)
+        case AMarkerColors.BRIGHT_GREEN:
+            return (40, 226, 20)
+        case AMarkerColors.LIGHT_GREEN:
+            return (16, 177, 118)
+        case AMarkerColors.TEAL:
+            return (16, 177, 118)
+        case AMarkerColors.CYAN:
+            return (31, 163, 146)
+        case AMarkerColors.SKY_BLUE:
+            return (80, 180, 255)
+        case AMarkerColors.BLUE:
+            return (48, 90, 255)
+        case AMarkerColors.DARK_BLUE:
+            return (48, 90, 255)
+        case AMarkerColors.VIOLET:
+            return (180, 50, 255)
+        case AMarkerColors.MAGENTA:
+            return (222, 68, 207)
+        case AMarkerColors.HOT_PING:
+            return (255, 18, 123)
+
 def rb_position_mark(m: AMarker) -> ET.Element:
     attrs = {
         'Name'  : m.name,
         'Type'  : REKORDBOX_MARKERTYPE_MAP[m.kind],
-        'Start' : str(ms_to_s(m.start)),
-        'End'   : str(ms_to_s(m.end))  if m.end is not None else "",
+        'Start' : str(m.start),
+        'End'   : str(m.end)  if m.end is not None else "",
         # rekordbox : Hot Cue A, B, C : "0", "1", "2"; Memory Cue : "-1"
         'Num'   : str(m.index)
     }
+    if m.color is not None:
+        r, g, b = rb_marker_color(m.color)
+        colors = {
+            'Red' : str(r),
+            'Green' : str(g),
+            'Blue' : str(b)
+        }
+        attrs.update(colors)
+
     return ET.Element('POSITION_MARK', attrib=attrs)
+
+##### BeatGrid ##########
 
 def rb_tempo(m: ABeatGridBPM, battito: int = 1) -> ET.Element:
     attrs = {
@@ -273,39 +304,48 @@ def rb_battito(bpms: list[ABeatGridBPM], idx: int, battiti: int = 4):
         battito = (battito + dbeats) % battiti
     return int(battito)
 
-def to_rekordbox(at: ATrack, tid: int) -> ET.Element:
+##### Min ##########
+
+def to_rekordbox(at: ATrack, tid: int, rb_version: list[int]) -> ET.Element:
     """Convert an ATrack instance into a Rekordbox XML element.
+
+    The time of markers and beatgrid is adjusted to reflect the shift
+    in absolute time between the various programs.
+
     """
     fs = fields(at)
     attrs = dict(reduce(lambda acc, f: acc + rb_attr(at, f, tid),  fs, []))
     trk = ET.Element("TRACK", **attrs)
-    for m in rb_reindex_loops(at.markers, at.data_source.software):
+    new_at = adjust_time(at, ADataSource(ASoftware.REKORDBOX, rb_version))
+    for m in rb_reindex_loops(new_at.markers, at.data_source.software):
         trk.append(rb_position_mark(m))
-    for i, m in enumerate(at.beatgrid):
-        battito = rb_battito(at.beatgrid, i, m.metro[1])
+    for i, m in enumerate(new_at.beatgrid):
+        battito = rb_battito(new_at.beatgrid, i, m.metro[1])
         trk.append(rb_tempo(m, battito))
     return trk
 
-def to_rekordbox_playlist(playlist: APlaylist, ofile:Path, rb_version: str = "7.1.3") -> None:
-    """Generate a RekordBox playlist XML ElementTree.
+def to_rekordbox_playlist(playlist: APlaylist, ofile:Path, rb_version: list[int]) -> None:
+    """Generate a RekordBox playlist XML file.
 
     Args:
     -----
       playlist: the playlist to convert.
       ofile: output file name.
+      rb_version: Rekordbox varsion as a list of 3 int.
     """
     # XML tree root
     dj_pl = ET.Element('DJ_PLAYLISTS', Version="1.0.0")
     root = ET.ElementTree(dj_pl)
     # PRODUCT sub-element
-    prod = ET.Element('PRODUCT', Name="rekordbox", Version=rb_version, Company="AlphaTheta")
+    ver = '.'.join(map(str,rb_version))
+    prod = ET.Element('PRODUCT', Name="rekordbox", Version=ver, Company="AlphaTheta")
     dj_pl.append(prod)
     # COLLECTION sub-element
     coll = ET.Element('COLLECTION', Entries=str(playlist.entries))
     dj_pl.append(coll)
     # TRACK SUb-sub-elements
     for i, at in enumerate(playlist.tracks):
-        e = to_rekordbox(at, i)
+        e = to_rekordbox(at, i, rb_version)
         coll.append(e)
     # PLAYLIST sub-element
     pl = ET.Element('PLAYLISTS')

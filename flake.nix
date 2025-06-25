@@ -12,8 +12,10 @@
     in  {
 
       packages = forAllSystems (system: rec {
+
+        basic-colormath = pkgs.${system}.callPackage ./deps/basic-colormath { };
         
-        djbabel = pkgs.${system}.callPackage ./. { };
+        djbabel = pkgs.${system}.callPackage ./. { inherit basic-colormath; };
 
         default = djbabel;
         
@@ -24,10 +26,11 @@
         develop = pkgs.${system}.mkShell {
           packages = [
             (pkgs.${system}.python3.withPackages (ps: with ps; [
-              pytest
+              self.packages.${system}.basic-colormath
               ipython
               mutagen
               pillow
+              pytest
             ]))
           ];
         };
@@ -37,8 +40,9 @@
             pkgs.${system}.hatch
             (pkgs.${system}.python3.withPackages (ps: with ps; [
               # dependencies
+              self.packages.${system}.basic-colormath
               mutagen
-              pillow
+              pillow # only used in ./src/djbabel/serato/overview.py
               pytest
             ]))
           ];
