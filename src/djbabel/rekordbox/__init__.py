@@ -1,4 +1,4 @@
-from ..types import ADataSource, APlaylist, ASoftware, ATrack, AFormat, AMarkerType, AMarker, ABeatGridBPM, AMarkerColors
+from ..types import APlaylist, ASoftware, ATrack, AFormat, AMarkerType, AMarker, ABeatGridBPM, AMarkerColors, ATransformation
 from ..utils import CLASSIC2ABBREV_KEY_MAP, adjust_time
 
 from dataclasses import fields, Field, replace
@@ -187,7 +187,7 @@ def rb_attr(at: ATrack, f: Field, tid: int):
 
 ##### Markers ##########
 
-def rb_reindex_loops(markers: list[AMarker], software: ASoftware) -> list[AMarker]:
+def rb_reindex_loops(markers: list[AMarker], trans: ATransformation) -> list[AMarker]:
     """Reindex Serato DJ Pro loops.
 
     In Serato loop indexes are independent from cue ones.
@@ -204,7 +204,7 @@ def rb_reindex_loops(markers: list[AMarker], software: ASoftware) -> list[AMarke
     will not be usable on CDJ-3000.
     """
     new_markers = []
-    match software:
+    match trans.source.software:
         case ASoftware.SERATO_DJ_PRO:
             # Serato DJ Pro doesn't have FADE-IN/-OUT markers.
             cues = list(filter(
@@ -306,7 +306,7 @@ def rb_battito(bpms: list[ABeatGridBPM], idx: int, battiti: int = 4):
 
 ##### Min ##########
 
-def to_rekordbox(at: ATrack, tid: int, rb_version: list[int]) -> ET.Element:
+def to_rekordbox(at: ATrack, tid: int, trans: ATransformation) -> ET.Element:
     """Convert an ATrack instance into a Rekordbox XML element.
 
     The time of markers and beatgrid is adjusted to reflect the shift
@@ -316,15 +316,15 @@ def to_rekordbox(at: ATrack, tid: int, rb_version: list[int]) -> ET.Element:
     fs = fields(at)
     attrs = dict(reduce(lambda acc, f: acc + rb_attr(at, f, tid),  fs, []))
     trk = ET.Element("TRACK", **attrs)
-    new_at = adjust_time(at, ADataSource(ASoftware.REKORDBOX, rb_version))
-    for m in rb_reindex_loops(new_at.markers, at.data_source.software):
+    new_at = adjust_time(at, trans)
+    for m in rb_reindex_loops(new_at.markers, trans):
         trk.append(rb_position_mark(m))
     for i, m in enumerate(new_at.beatgrid):
         battito = rb_battito(new_at.beatgrid, i, m.metro[1])
         trk.append(rb_tempo(m, battito))
     return trk
 
-def to_rekordbox_playlist(playlist: APlaylist, ofile:Path, rb_version: list[int]) -> None:
+def to_rekordbox_playlist(playlist: APlaylist, ofile:Path, trans: ATransformation) -> None:
     """Generate a RekordBox playlist XML file.
 
     Args:
@@ -337,7 +337,7 @@ def to_rekordbox_playlist(playlist: APlaylist, ofile:Path, rb_version: list[int]
     dj_pl = ET.Element('DJ_PLAYLISTS', Version="1.0.0")
     root = ET.ElementTree(dj_pl)
     # PRODUCT sub-element
-    ver = '.'.join(map(str,rb_version))
+    ver = '.'.join(map(str,trans.target.version))
     prod = ET.Element('PRODUCT', Name="rekordbox", Version=ver, Company="AlphaTheta")
     dj_pl.append(prod)
     # COLLECTION sub-element
@@ -345,7 +345,7 @@ def to_rekordbox_playlist(playlist: APlaylist, ofile:Path, rb_version: list[int]
     dj_pl.append(coll)
     # TRACK SUb-sub-elements
     for i, at in enumerate(playlist.tracks):
-        e = to_rekordbox(at, i, rb_version)
+        e = to_rekordbox(at, i, trans)
         coll.append(e)
     # PLAYLIST sub-element
     pl = ET.Element('PLAYLISTS')

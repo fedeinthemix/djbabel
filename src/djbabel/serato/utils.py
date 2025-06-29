@@ -1,11 +1,12 @@
 import base64
 from mutagen.mp4 import MP4FreeForm
-from mutagen._file import FileType
-from mutagen.id3 import GEOB, TXXX, RVA2
+from mutagen._file import FileType       # pyright: ignore
+from mutagen.id3 import GEOB, TXXX, RVA2 # pyright: ignore
 import struct
 
 from djbabel.serato.types import EntryBase, SeratoTags
 from ..types import AFormat
+from ..utils import audio_file_type
 
 ###################################################################
 
@@ -48,27 +49,17 @@ def parse_serato_envelope(data: bytes, prefix: bytes) -> bytes:
 
     return decoded[marker_offset:]
 
-def audio_file_type(audio: FileType) -> AFormat:
-    if 'audio/mp3' in audio.mime:
-        return AFormat.MP3
-    elif 'audio/flac' in audio.mime:
-        return AFormat.FLAC
-    elif 'audio/mp4' in audio.mime:
-        return AFormat.M4A
-    else:
-        raise NotImplementedError("File format not supported")
-
 def maybe_metadata(audio, tag_name):
-    if tag_name in audio.tags.keys():
+    if audio.tags is not None and tag_name in audio.tags.keys():
         data = audio.tags[tag_name]
         if is_list_of_one_str(data):
             return bytes(data[0], 'utf-8')
         elif is_list_of_one_mp4freeform(data):
             return bytes(data[0])
         elif isinstance(data, GEOB):
-            return data.data
+            return data.data # pyright: ignore
         elif isinstance(data, TXXX):
-            return data.text
+            return data.text # pyright: ignore
         elif isinstance(data, RVA2):
             return data
         else:

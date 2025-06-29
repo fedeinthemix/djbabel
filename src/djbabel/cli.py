@@ -6,7 +6,7 @@ from pathlib import Path
 from mutagen import MutagenError # pyright: ignore
 import warnings
 
-from .types import APlaylist, ASoftware, ADataSource
+from .types import ASoftwareInfo, APlaylist, ASoftware, ATransformation
 from .serato import read_serato_playlist
 from .rekordbox import to_rekordbox_playlist
 
@@ -25,43 +25,43 @@ warnings.formatwarning = custom_formatwarning
 #######################################################################
 # Helpers
 
-def parse_input_format(arg: str) -> ADataSource:
+def parse_input_format(arg: str) -> ASoftwareInfo:
     match arg:
         case 'sdjpro':
-            return ADataSource(ASoftware.SERATO_DJ_PRO, [3,3,2])
+            return ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,3,2))
         case _:
             raise ValueError(f'Input format {arg} not supported')
 
 
-def parse_output_format(arg: str) -> ADataSource:
+def parse_output_format(arg: str) -> ASoftwareInfo:
     match arg:
         case 'rb7':
             # The version defined here is written in the XLM file.
             # Use a released version compatible with the RB7 format.
-            return ADataSource(ASoftware.REKORDBOX, [7,1,3])
+            return ASoftwareInfo(ASoftware.REKORDBOX, (7,1,3))
         case _:
             raise ValueError(f'Output format {arg} not supported')
 
 
-def get_playlist(filepath: Path, source: ADataSource, anchor: Path | None, relative: Path | None) -> APlaylist:
-    match source:
-        case ADataSource(ASoftware.SERATO_DJ_PRO, _):
+def get_playlist(filepath: Path, trans: ATransformation, anchor: Path | None, relative: Path | None) -> APlaylist:
+    match trans.source:
+        case ASoftwareInfo(ASoftware.SERATO_DJ_PRO, _):
             return read_serato_playlist(filepath, anchor, relative)
         case _:
-            raise ValueError(f'Source format {source} not supported.')
+            raise ValueError(f'Source format {trans.source} not supported.')
 
 
-def create_playlist(playlist: APlaylist, filepath: Path, target: ADataSource) -> None:
-    match target:
-        case ADataSource(ASoftware.REKORDBOX, ver):
-            return to_rekordbox_playlist(playlist, filepath, ver)
+def create_playlist(playlist: APlaylist, filepath: Path, trans: ATransformation) -> None:
+    match trans.target:
+        case ASoftwareInfo(ASoftware.REKORDBOX, _):
+            return to_rekordbox_playlist(playlist, filepath, trans)
         case _:
-            raise ValueError(f'Target format {target} not supported.')
+            raise ValueError(f'Target format {trans.target} not supported.')
 
 
-def output_filename(ofile: Path | None, ifile: Path, target: ADataSource) -> Path:
+def output_filename(ofile: Path | None, ifile: Path, trans: ATransformation) -> Path:
     if ofile is None:
-        match target.software:
+        match trans.target.software:
             case ASoftware.REKORDBOX:
                 ofile = Path(ifile.stem + '.xml')
             case ASoftware.SERATO_DJ_PRO:
@@ -117,12 +117,12 @@ def main():
     # print(args)
 
     try:
-        source = parse_input_format(args.source)
-        target = parse_output_format(args.target)
-        ofile = output_filename(args.ofile, args.ifile, target)
-        playlist = get_playlist(args.ifile, source, args.anchor, args.relative)
+        trans = ATransformation(source = parse_input_format(args.source),
+                                target = parse_output_format(args.target))
+        ofile = output_filename(args.ofile, args.ifile, trans)
+        playlist = get_playlist(args.ifile, trans, args.anchor, args.relative)
         # print(playlist)
-        create_playlist(playlist, ofile, target)
+        create_playlist(playlist, ofile, trans)
     except ValueError as err:
         print(f'{err}')
     except MutagenError as err:

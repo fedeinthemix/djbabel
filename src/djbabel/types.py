@@ -123,6 +123,9 @@ class ASoftware(StrEnum):
 class ADataSource:
     software: ASoftware
     version: list[int] # data format version
+    encoder: str | None = None # None means that it's
+                               # unspecified. This is usefule for
+                               # example in loss-less.
 
 @dataclass
 class ATrack:
@@ -168,3 +171,17 @@ class APlaylist:
         self.name = name
         self.tracks = tracks
         self.entries = len(tracks)
+
+@dataclass
+class ASoftwareInfo:
+    """CLI Specification of source/target DJ software.
+    """
+    software: ASoftware
+    version: tuple[int,int,int]
+
+@dataclass
+class ATransformation:
+    """The playlist transformation being performed.
+    """
+    source: ASoftwareInfo
+    target: ASoftwareInfo

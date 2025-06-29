@@ -7,7 +7,7 @@ from .types import EntryBase
 # from djbabel.serato.overview import get_serato_overview
 from ..types import ATrack, AMarkerType, AMarker, ABeatGridBPM, ADataSource, ALoudness, ASoftware, AFormat, APlaylist
 from .utils import audio_file_type, parse_color, identity
-from ..utils import path_anchor, get_leading_base64_part, closest_color_perceptual, ms_to_s
+from ..utils import path_anchor, get_leading_base64_part, closest_color_perceptual, ms_to_s, audio_endocer
 from .crate import take_fields, get_track_paths
 
 import base64
@@ -49,7 +49,7 @@ map_to_mp3_text_tag = {
     # 'play_count' : 'PCNT', # ID3 standard tag
 }
 
-# the can multiple tags with the same key, e.g., for multiple authors
+# there can multiple tags with the same key, e.g., for multiple authors
 # case INSENSITIVE
 # https://xiph.org/vorbis/doc/v-comment.html
 map_to_flac_text_tag = {
@@ -334,7 +334,8 @@ def loudness(audio: FileType) -> ALoudness | None:
 def data_source(audio: FileType) -> ADataSource:
     an = get_serato_analysis(audio)
     v = an if an is not None else []
-    return ADataSource(ASoftware.SERATO_DJ_PRO, v)
+    enc = audio_endocer(audio)
+    return ADataSource(ASoftware.SERATO_DJ_PRO, v, enc)
 
 def location(audio: FileType) -> Path:
     if audio.filename is not None:

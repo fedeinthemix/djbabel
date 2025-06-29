@@ -40,13 +40,15 @@ from djbabel.serato.analysis import get_serato_analysis
 from djbabel.serato.relvol import get_serato_relvol
 
 from djbabel.serato.utils import serato_metadata, parse_serato_envelope, serato_tag_marker, serato_tag_name, audio_file_type, maybe_metadata, get_serato_metadata
-from djbabel.types import ABeatGridBPM, ADataSource, AFormat, AMarkerType, AMarker, APlaylist, ASoftware, ATrack, ABeatGridBPM, ALoudness
+from djbabel.types import ABeatGridBPM, ADataSource, AFormat, AMarkerType, AMarker, APlaylist, ASoftware, ATrack, ABeatGridBPM, ALoudness, ATransformation
 
 from djbabel.serato import from_serato, read_serato_playlist
 
 from djbabel.serato.crate import CrateFieldKind, take_field, take_field_type, parse_field_bool, Unknown, take_fields, created_classes, get_track_paths
 
 from djbabel.utils import beatgrid_offset
+
+from djbabel.cli import parse_input_format, parse_output_format
 
 #####################################################
 
@@ -171,30 +173,11 @@ a1 = from_serato(audio_mp3)
 a_flac = from_serato(audio_flac)
 a_m4a = from_serato(audio_m4a)
 
+trans = ATransformation(parse_input_format('sdjpro'),
+                        parse_output_format('rb7'))
+
 apl = APlaylist("party", [a1, a_flac, a_m4a])
-to_rekordbox_playlist(apl, Path("test_rekordbox.xml"), [7,1,3])
-
-# beatgrid_offset(ADataSource(ASoftware.REKORDBOX, [7,1,3]))
-
-##########################################################
-
-get_serato_metadata(SeratoTags.ANALYSIS, lambda x: x)(audio_flac)
-
-tag_name = SeratoTags.ANALYSIS.value.names[AFormat.FLAC]
-data = bytes(audio_flac.tags[tag_name][0], 'ascii')
-
-b64data = data.replace(b'\n', b'')
-padding = b'A==' if len(b64data) % 4 == 1 else (b'=' * (-len(b64data) % 4))
-decoded = base64.b64decode(b64data + padding)
-
-tag_name = SeratoTags.ANALYSIS.value.names[AFormat.M4A]
-data = bytes(audio_m4a.tags[tag_name][0])
-b64data = data.replace(b'\n', b'')
-padding = b'A==' if len(b64data) % 4 == 1 else (b'=' * (-len(b64data) % 4))
-decoded = base64.b64decode(b64data + padding)
-
-tag_name = SeratoTags.ANALYSIS.value.names[AFormat.MP3]
-data = audio_mp3.tags[tag_name]
+to_rekordbox_playlist(apl, Path("test_rekordbox.xml"), trans)
 
 ##########################################################
 # BeatGrid Shift
@@ -361,6 +344,41 @@ dt_high_pres = mean([
     ])
 
 ## 0.048121706008909415 -> 0.048
+
+##########################################################
+# Encodere
+
+# ## encoder stored in metadata
+# ### M4A
+# audio_m4a.tags['©too'] # ['Lavf59.16.100'], libavformat from ffmpeg
+# # The following describe the algorithm used (from the standard) to encode.
+# # This info inform a receiving party how to decode the data.
+# audio_m4a.info.codec # 'mp4a.40.2', https://mp4ra.org/registered-types/codecs
+# audio_m4a.info.codec_description # 'AAC LC', for display only, may change
+
+# # --> Use audio_m4a.tags['©too'] as description of the encoder
+
+audio_mp3.tags['TSSE']
+audio_m4a.tags['©too']
+audio_flac.tags.keys()
+
+# file_mp3 = Path("audio") / "The_Todd_Terry_Project_-_Weekend.mp3"
+file_m4a_2 = Path("audio") / "blow-go-reencoded_with_qaac.m4a"
+file_mp3_2 = Path("audio/beautiful_poples.mp3")
+file_mp3_3 = Path("audio") / "The_Todd_Terry_Project_-_Weekend-reencoded_with_lame.mp3"
+
+# audio_mp3: MP3 = mutagen.File(file_mp3, easy=False) # type: ignore[reportUnknownMemberType]
+audio_m4a_2 = mutagen.File(file_m4a_2, easy=False)
+audio_mp3_2 = mutagen.File(file_mp3_2, easy=False)
+audio_mp3_3 = mutagen.File(file_mp3_3, easy=False)
+
+audio_m4a_2.tags['©too']
+audio_mp3_2.tags['TSSE']
+audio_mp3_3.info.encoder_info
+audio_mp3_3.info.encoder_settings
+
+a_mp3_2 = from_serato(audio_mp3_2)
+a_mp3_3 = from_serato(audio_mp3_3)
 
 ##########################################################
 

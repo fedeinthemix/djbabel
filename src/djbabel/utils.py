@@ -1,14 +1,25 @@
 from basic_colormath import get_delta_e
 from dataclasses import replace
+from mutagen._file import FileType # pyright: ignore
 from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 
 import itertools
 import os
 
-from .types import ADataSource, AMarkerColors, ASoftware, ATrack
+from .types import AFormat, AMarkerColors, ASoftware, ASoftwareInfo, ATrack, ATransformation
 
 #########################################################################
 # Helper functions
+
+def audio_file_type(audio: FileType) -> AFormat:
+    if 'audio/mp3' in audio.mime:
+        return AFormat.MP3
+    elif 'audio/flac' in audio.mime:
+        return AFormat.FLAC
+    elif 'audio/mp4' in audio.mime:
+        return AFormat.M4A
+    else:
+        raise NotImplementedError("File format not supported")
 
 def path_anchor(ancor: Path | None) -> PurePath:
     if ancor is None:
@@ -62,23 +73,32 @@ def closest_color_perceptual(target_rgb: tuple[int,int,int]) -> AMarkerColors:
     return closest_color # pyright: ignore[reportReturnType] # will never be None
 
 
-def beatgrid_offset(target: ADataSource) -> float:
+def beatgrid_offset(at: ATrack, trans: ATransformation) -> float:
     """BeatGrid offset relative to Serato DJ Pro 3.3.2 in seconds.
 
     dt = t_target - t_serato_dj_pro
     """
-    match target:
-        case ADataSource(ASoftware.SERATO_DJ_PRO, _):
+    match trans.target:
+        case ASoftwareInfo(ASoftware.SERATO_DJ_PRO, _):
+            # Serato DJ Pro is currently used as reference.
             return 0.0
-        case ADataSource(ASoftware.REKORDBOX, _):
-            return 0.048
+        case ASoftwareInfo(ASoftware.REKORDBOX, _):
+            match at.aformat:
+                case AFormat.M4A:
+                    return 0.046
+                case AFormat.MP3:
+                    # Files encoded with 'lame -V0' are NOT shifted
+                    return 0.0
+                case _:
+                    # LOSSLESS formats are not shifted
+                    return 0.0
         case _:
-            raise ValueError(f'{target.software} currently not supported.')
+            raise ValueError(f'{trans.target.software} currently not supported.')
 
-def adjust_time(at: ATrack, target: ADataSource) -> ATrack:
+def adjust_time(at: ATrack, trans: ATransformation) -> ATrack:
     """Adjust the markers and beatgrid time according to target.
     """
-    offset = beatgrid_offset(target)
+    offset = beatgrid_offset(at, trans)
     new_markers = []
     for m in at.markers:
         new_start = m.start + offset
@@ -89,6 +109,34 @@ def adjust_time(at: ATrack, target: ADataSource) -> ATrack:
         new_position = bg.position + offset
         new_beatgrid = new_beatgrid + [replace(bg,position=new_position)]
     return replace(at, markers=new_markers, beatgrid=new_beatgrid)
+
+def mp3_encoder(audio: FileType) -> str | None:
+    if audio.info is not None and audio.info.encoder_info != '':
+        return audio.info.encoder_info
+    elif audio.tags is not None and 'TSSE' in audio.tags.keys():
+        return audio.tags['TSSE'].text[0]
+    else:
+        return None
+
+def audio_endocer(audio: FileType) -> str | None:
+    ks = audio.tags.keys() if audio.tags is not None else None
+    match audio_file_type(audio):
+        case AFormat.MP3:
+            return mp3_encoder(audio)
+        case AFormat.M4A:
+            k = '©too'
+            return audio.tags[k][0] if ks is not None and k in ks else None # pyright: ignore
+        case AFormat.FLAC:
+            if ks is not None and 'ENCODEDBY' in ks:
+                k = 'ENCODEDBY'
+                return audio.tags[k] if k in ks else None # pyright: ignore
+            elif ks is not None and 'ENCODER' in ks:
+                k = 'ENCODER'
+                return audio.tags[k] if k in ks else None # pyright: ignore
+            else:
+                return None
+        case _:
+            raise ValueError(f'audio_encoder: file format not supported.')
 
 ###############################################################################
 # Key Maps
