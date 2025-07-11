@@ -9,6 +9,7 @@ import warnings
 from .types import ASoftwareInfo, APlaylist, ASoftware, ATransformation
 from .serato import read_serato_playlist
 from .rekordbox import to_rekordbox_playlist
+from .traktor import to_traktor_playlist
 
 #######################################################################
 # Warnings
@@ -39,6 +40,8 @@ def parse_output_format(arg: str) -> ASoftwareInfo:
             # The version defined here is written in the XLM file.
             # Use a released version compatible with the RB7 format.
             return ASoftwareInfo(ASoftware.REKORDBOX, (7,1,3))
+        case 'traktor4':
+            return ASoftwareInfo(ASoftware.TRAKTOR, (4,2,0))
         case _:
             raise ValueError(f'Output format {arg} not supported')
 
@@ -55,6 +58,8 @@ def create_playlist(playlist: APlaylist, filepath: Path, trans: ATransformation)
     match trans.target:
         case ASoftwareInfo(ASoftware.REKORDBOX, _):
             return to_rekordbox_playlist(playlist, filepath, trans)
+        case ASoftwareInfo(ASoftware.TRAKTOR, _):
+            return to_traktor_playlist(playlist, filepath, trans)
         case _:
             raise ValueError(f'Target format {trans.target} not supported.')
 
@@ -66,6 +71,8 @@ def output_filename(ofile: Path | None, ifile: Path, trans: ATransformation) -> 
                 ofile = Path(ifile.stem + '.xml')
             case ASoftware.SERATO_DJ_PRO:
                 ofile = Path(ifile.stem + '.crate')
+            case ASoftware.TRAKTOR:
+                ofile = Path(ifile.stem + '.nml')
     if ofile.exists():
         overwrite = input(f'file {ofile} exists. Overwrite (y/[n])? ')
         if overwrite.lower() != 'y':
@@ -103,7 +110,7 @@ def main():
     parser.add_argument('-s', '--source', type=str, choices=['sdjpro'],
                         default='sdjpro',
                         help='source playlist format')
-    parser.add_argument('-t', '--target', type=str, choices=['rb7'],
+    parser.add_argument('-t', '--target', type=str, choices=['rb7', 'traktor4'],
                         default='rb7',
                         help='target playlist format')
     parser.add_argument('-o', '--ofile', type=Path,

@@ -1,13 +1,11 @@
 from ..types import APlaylist, ASoftware, ATrack, AFormat, AMarkerType, AMarker, ABeatGridBPM, AMarkerColors, ATransformation
-from ..utils import CLASSIC2ABBREV_KEY_MAP, adjust_time
+from ..utils import CLASSIC2ABBREV_KEY_MAP, adjust_time, is_str_or_none, is_int_or_none, is_float_or_none, is_date_or_none, reindex_sdjpro_loops
 
 from dataclasses import fields, Field, replace
 from datetime import date
 from functools import reduce
 from math import ceil
 from pathlib import Path
-import typing
-import types
 from urllib.parse import quote, urljoin
 import xml.etree.ElementTree as ET
 
@@ -77,29 +75,6 @@ REKORDBOX_AFORMAT_MAP = {
     AFormat.M4A : 'MP4 File',
     # AFormat.WAV : 'WAV FILE',
 }
-
-#######################################################################
-# Helpers
-
-def make_or_none_predicate(_type: type):
-    """Make a predicate function recognizing the types `_type` or `_type | None`.
-    """
-    def predicate(field_type):
-        t = typing.get_origin(field_type)
-        if t is typing.Union or t is types.UnionType:
-            args = typing.get_args(field_type)
-            return _type in args and (type(None) in args or None in args)
-        elif field_type is _type:
-            return True
-        else:
-            return False
-
-    return predicate
-
-is_str_or_none = make_or_none_predicate(str)
-is_int_or_none = make_or_none_predicate(int)
-is_float_or_none = make_or_none_predicate(float)
-is_date_or_none = make_or_none_predicate(date)
 
 #######################################################################
 # Main functions
@@ -186,41 +161,6 @@ def rb_attr(at: ATrack, f: Field, tid: int):
         return []
 
 ##### Markers ##########
-
-def rb_reindex_loops(markers: list[AMarker], trans: ATransformation) -> list[AMarker]:
-    """Reindex Serato DJ Pro loops.
-
-    In Serato loop indexes are independent from cue ones.
-    Differently from this, in Rekordbox and Traktor the indexes of
-    both types lies in the same namespace (same buttons).
-    
-    On DJM-S11 you can call up to 16 Hot Cues by pressing the PADS
-    (two pages). CDJ-3000 only support 8 Hot Cues.
-    
-    To accomodate both devices if the number of CUEs + LOOPs <= 8 we
-    store the loops at index 8 - (no. LOOPs) to 7.
-    
-    If CUEs + LOOPs > 8 we store them sequentially, some of them
-    will not be usable on CDJ-3000.
-    """
-    new_markers = []
-    match trans.source.software:
-        case ASoftware.SERATO_DJ_PRO:
-            # Serato DJ Pro doesn't have FADE-IN/-OUT markers.
-            cues = list(filter(
-                lambda m: m.kind == AMarkerType.CUE or m.kind == AMarkerType.CUE_LOAD,
-                markers))
-            loops = list(filter(lambda m: m.kind == AMarkerType.LOOP, markers))
-            if len(cues) + len(loops) <= 8:
-                i = 8-len(loops)
-            else:
-                i = len(cues)
-            new_markers = cues
-            for m in loops:
-                new_markers = new_markers + [replace(m, index = i + m.index)]
-        case _:
-            new_markers = markers
-    return new_markers
 
 def rb_marker_color(c: AMarkerColors) -> tuple[int,int,int]:
     match c:
@@ -317,7 +257,7 @@ def to_rekordbox(at: ATrack, tid: int, trans: ATransformation) -> ET.Element:
     attrs = dict(reduce(lambda acc, f: acc + rb_attr(at, f, tid),  fs, []))
     trk = ET.Element("TRACK", **attrs)
     new_at = adjust_time(at, trans)
-    for m in rb_reindex_loops(new_at.markers, trans):
+    for m in reindex_sdjpro_loops(new_at.markers, trans):
         trk.append(rb_position_mark(m))
     for i, m in enumerate(new_at.beatgrid):
         battito = rb_battito(new_at.beatgrid, i, m.metro[1])
@@ -331,7 +271,7 @@ def to_rekordbox_playlist(playlist: APlaylist, ofile:Path, trans: ATransformatio
     -----
       playlist: the playlist to convert.
       ofile: output file name.
-      rb_version: Rekordbox varsion as a list of 3 int.
+      trans: information about the source and target format.
     """
     # XML tree root
     dj_pl = ET.Element('DJ_PLAYLISTS', Version="1.0.0")

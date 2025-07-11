@@ -1,12 +1,15 @@
 from basic_colormath import get_delta_e
 from dataclasses import replace
+from datetime import date
 from mutagen._file import FileType # pyright: ignore
 from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 
 import itertools
 import os
+import typing
+import types
 
-from .types import AFormat, AMarkerColors, ASoftware, ASoftwareInfo, ATrack, ATransformation
+from .types import AFormat, AMarkerColors, ASoftware, ASoftwareInfo, ATrack, ATransformation, AMarker, AMarkerType
 
 #########################################################################
 # Helper functions
@@ -56,6 +59,7 @@ def get_leading_base64_part(byte_string: bytes) -> bytes:
 
     return bytes(result_bytes)
 
+###### COLORS ######
 
 def closest_color_perceptual(target_rgb: tuple[int,int,int]) -> AMarkerColors:
     """Given an RGB color, find the closest in the AMarkerColors palette.
@@ -72,6 +76,7 @@ def closest_color_perceptual(target_rgb: tuple[int,int,int]) -> AMarkerColors:
             closest_color = color_rgb
     return closest_color # pyright: ignore[reportReturnType] # will never be None
 
+###### MARKERS AND BEATGRID ######
 
 def beatgrid_offset(at: ATrack, trans: ATransformation) -> float:
     """BeatGrid offset relative to Serato DJ Pro 3.3.2 in seconds.
@@ -110,6 +115,44 @@ def adjust_time(at: ATrack, trans: ATransformation) -> ATrack:
         new_beatgrid = new_beatgrid + [replace(bg,position=new_position)]
     return replace(at, markers=new_markers, beatgrid=new_beatgrid)
 
+
+def reindex_sdjpro_loops(markers: list[AMarker], trans: ATransformation) -> list[AMarker]:
+    """Reindex Serato DJ Pro loops.
+
+    In Serato loop indexes are independent from cue ones.
+    Differently from this, in Rekordbox and Traktor the indexes of
+    both types lies in the same namespace (same buttons).
+
+    On DJM-S11 you can call up to 16 Hot Cues by pressing the PADS
+    (two pages). CDJ-3000 only support 8 Hot Cues.
+
+    To accomodate both devices if the number of CUEs + LOOPs <= 8 we
+    store the loops at index 8 - (no. LOOPs) to 7.
+
+    If CUEs + LOOPs > 8 we store them sequentially, some of them
+    will not be usable on CDJ-3000.
+    """
+    new_markers = []
+    match trans.source.software:
+        case ASoftware.SERATO_DJ_PRO:
+            # Serato DJ Pro doesn't have FADE-IN/-OUT markers.
+            cues = list(filter(
+                lambda m: m.kind == AMarkerType.CUE or m.kind == AMarkerType.CUE_LOAD,
+                markers))
+            loops = list(filter(lambda m: m.kind == AMarkerType.LOOP, markers))
+            if len(cues) + len(loops) <= 8:
+                i = 8-len(loops)
+            else:
+                i = len(cues)
+            new_markers = cues
+            for m in loops:
+                new_markers = new_markers + [replace(m, index = i + m.index)]
+        case _:
+            new_markers = markers
+    return new_markers
+
+###### ENCODERS ######
+
 def mp3_encoder(audio: FileType) -> str | None:
     if audio.info is not None and audio.info.encoder_info != '':
         return audio.info.encoder_info
@@ -137,6 +180,29 @@ def audio_endocer(audio: FileType) -> str | None:
                 return None
         case _:
             raise ValueError(f'audio_encoder: file format not supported.')
+
+#######################################################################
+# Predicates
+
+def make_or_none_predicate(_type: type):
+    """Make a predicate function recognizing the types `_type` or `_type | None`.
+    """
+    def predicate(field_type):
+        t = typing.get_origin(field_type)
+        if t is typing.Union or t is types.UnionType:
+            args = typing.get_args(field_type)
+            return _type in args and (type(None) in args or None in args)
+        elif field_type is _type:
+            return True
+        else:
+            return False
+
+    return predicate
+
+is_str_or_none = make_or_none_predicate(str)
+is_int_or_none = make_or_none_predicate(int)
+is_float_or_none = make_or_none_predicate(float)
+is_date_or_none = make_or_none_predicate(date)
 
 ###############################################################################
 # Key Maps
@@ -230,4 +296,49 @@ CLASSIC2ABBREV_KEY_MAP = {
     'Bbmin': 'Bbm',
     'Bmin': 'Bm',
     'Bmi': 'Bm',
+}
+
+# Traktor uses Open-Key notation
+CLASSIC2OPEN_KEY_MAP = {
+    # Major Keys
+    'Cmaj': '1d',
+    'C#maj': '8d',  # Or Dbmaj
+    'Dbmaj': '8d',
+    'Dmaj': '3d',
+    'Ebmaj': '10d',
+    'Emaj': '5d',
+    'Fmaj': '12d',
+    'F#maj': '7d',  # Or Gbmaj
+    'Gbmaj': '7d',
+    'Gmaj': '2d',
+    'Abmaj': '9d',
+    'Amaj': '4d',
+    'Bbmaj': '11d',
+    'Bmaj': '6d',
+
+    # Minor Keys
+    'Ami': '1m',    # Relative minor of Cmaj
+    'Amin': '1m',
+    'A#min': '8m',  # Or Bbmin, Relative minor of Dbmaj
+    'Bbmin': '8m',
+    'Bmi': '3m',    # Relative minor of Dmaj
+    'Bmin': '3m',
+    'Cmi': '10m',   # Relative minor of Ebmaj
+    'Cmin': '10m',
+    'C#min': '5m',  # Relative minor of Emaj
+    'Dbmin': '5m',
+    'Dmi': '12m',   # Relative minor of Fmaj
+    'Dmin': '12m',
+    'D#min': '7m',  # Or Ebmin, Relative minor of F#maj
+    'Ebmin': '7m',
+    'Emi': '2m',    # Relative minor of Gmaj
+    'Emin': '2m',
+    'Fmi': '9m',    # Relative minor of Abmaj
+    'Fmin': '9m',
+    'F#min': '4m',  # Relative minor of Amaj
+    'Gbmin': '4m',
+    'Gmi': '11m',   # Relative minor of Bbmaj
+    'Gmin': '11m',
+    'G#min': '6m',  # Or Abmin, Relative minor of Bmaj
+    'Abmin': '6m',
 }

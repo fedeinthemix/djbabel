@@ -104,6 +104,7 @@ class ALoudness:
 class ASoftware(StrEnum):
     SERATO_DJ_PRO = auto()
     REKORDBOX = auto()
+    TRAKTOR = auto()
 
 # version is the number in the Serato Marker2 analisys tag. However,
 # the meaning of this value is unclear ([2,1] for MP3 and [0,1,0] for

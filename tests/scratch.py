@@ -153,9 +153,14 @@ print(hexdump(mv2_b_mp3))
 ##########################################################
 # CRATES
 
+from djbabel.traktor.utils import traktor_path
+
 fn = Path('subcrates') / 'FEBE_MIX_80_90.crate'
 
-# pl = read_serato_playlist(fn)
+wp = PureWindowsPath('C:\\Users\\beffa\\test.m4a')
+anchor = Path('/run/media/beffa/FBE\\ HDD\\ 1/backups/orione-backpc-windows/')
+relative = Path('Users/beffa')
+pl = read_serato_playlist(fn, anchor, relative)
 
 with open(fn, "rb") as f:
     data = f.read()
@@ -379,6 +384,32 @@ audio_mp3_3.info.encoder_settings
 
 a_mp3_2 = from_serato(audio_mp3_2)
 a_mp3_3 = from_serato(audio_mp3_3)
+
+##########################################################
+# Traktor
+
+from djbabel.traktor.write import info_tag, entry_tag, album_tag, modification_info_tag, tempo_tag, musical_key_tag, loudness_tag, location_tag, cue_v2_beatgrid, cue_v2_markers, to_traktor_playlist
+
+a1 = from_serato(audio_mp3)
+a_flac = from_serato(audio_flac)
+a_m4a = from_serato(audio_m4a)
+
+trans = ATransformation(parse_input_format('sdjpro'),
+                        parse_output_format('rb7'))
+
+itag = info_tag(a1, trans)
+etag = entry_tag(a1, trans)
+atag = album_tag(a1, trans)
+mtag = modification_info_tag(a1, trans)
+ttag = tempo_tag(a1, trans)
+ktag = musical_key_tag(a1, trans)
+ltag = loudness_tag(a1, trans)
+ctag = location_tag(a1, trans)
+btag = cue_v2_beatgrid(a1.beatgrid[0])
+cuetag = cue_v2_markers(a1.markers[0])
+
+apl = APlaylist("party", [a1, a_flac, a_m4a])
+to_traktor_playlist(apl, Path("test_traktor.nml"), trans)
 
 ##########################################################
 
