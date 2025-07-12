@@ -10,7 +10,10 @@ import warnings
 def traktor_path(p: Path) -> str:
     """Replaces path delimiter '/' by '/:', and remove Windows drive.
     """
-    fpath = p.resolve()
+    if not p.is_absolute():
+        fpath = p.resolve()
+    else:
+        fpath = p
     f = fpath.name
     # On Windows the 1st part is the anchor ( drive + root)
     # On POSIX it's the root that we re-add in 'td'

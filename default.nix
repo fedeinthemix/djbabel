@@ -31,7 +31,7 @@ python3Packages.buildPythonPackage rec {
   ];
 
   nativeCheckInputs = [
-    # python3Packages.pytestCheckHook
+    python3Packages.pytestCheckHook
     # python3Packages.sphinxHook
   ];
 

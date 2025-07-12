@@ -40,7 +40,7 @@ from djbabel.serato.analysis import get_serato_analysis
 from djbabel.serato.relvol import get_serato_relvol
 
 from djbabel.serato.utils import serato_metadata, parse_serato_envelope, serato_tag_marker, serato_tag_name, audio_file_type, maybe_metadata, get_serato_metadata
-from djbabel.types import ABeatGridBPM, ADataSource, AFormat, AMarkerType, AMarker, APlaylist, ASoftware, ATrack, ABeatGridBPM, ALoudness, ATransformation
+from djbabel.types import ABeatGridBPM, ADataSource, AFormat, AMarkerType, AMarker, APlaylist, ASoftware, ATrack, ABeatGridBPM, ALoudness, ATransformation, AMarkerColors, ASoftwareInfo
 
 from djbabel.serato import from_serato, read_serato_playlist
 
@@ -182,7 +182,7 @@ trans = ATransformation(parse_input_format('sdjpro'),
                         parse_output_format('rb7'))
 
 apl = APlaylist("party", [a1, a_flac, a_m4a])
-to_rekordbox_playlist(apl, Path("test_rekordbox.xml"), trans)
+to_rekordbox_playlist(apl, Path("pl_rekordbox.xml"), trans)
 
 ##########################################################
 # BeatGrid Shift
@@ -409,7 +409,7 @@ btag = cue_v2_beatgrid(a1.beatgrid[0])
 cuetag = cue_v2_markers(a1.markers[0])
 
 apl = APlaylist("party", [a1, a_flac, a_m4a])
-to_traktor_playlist(apl, Path("test_traktor.nml"), trans)
+to_traktor_playlist(apl, Path("pl_traktor.nml"), trans)
 
 ##########################################################
 

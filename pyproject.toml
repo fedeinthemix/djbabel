@@ -27,11 +27,11 @@ dynamic = ["version"]
 [project.optional-dependencies]
 dev = ["pytest"]
 
-[project.scripts]
-djbabel = "djbabel.cli:main"
-
 [tool.pytest.ini_options]
 pythonpath = "src"
+
+[project.scripts]
+djbabel = "djbabel.cli:main"
 
 [tool.pyright]
 include = ["src"]
