@@ -4,6 +4,7 @@
 
 import functools
 import sys
+
 sys.path.append('../src')
 
 from datetime import date
@@ -173,6 +174,7 @@ get_track_paths(flds)
 # REkordbox
 
 from djbabel.rekordbox import to_rekordbox_playlist
+from djbabel.rekordbox.write import to_rekordbox
 
 a1 = from_serato(audio_mp3)
 a_flac = from_serato(audio_flac)
