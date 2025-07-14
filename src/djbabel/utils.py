@@ -1,15 +1,17 @@
 from basic_colormath import get_delta_e
 from dataclasses import replace
 from datetime import date
+import mutagen.mp3
 from mutagen._file import FileType # pyright: ignore
 from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 
 import itertools
 import os
+import re
 import typing
 import types
 
-from .types import AFormat, AMarkerColors, ASoftware, ASoftwareInfo, ATrack, ATransformation, AMarker, AMarkerType
+from .types import AEncoderMode, AFormat, AMarkerColors, ASoftware, ASoftwareInfo, ATrack, ATransformation, AMarker, AMarkerType, AEncoder, AEncoderMode
 
 #########################################################################
 # Helper functions
@@ -78,6 +80,48 @@ def closest_color_perceptual(target_rgb: tuple[int,int,int]) -> AMarkerColors:
 
 ###### MARKERS AND BEATGRID ######
 
+def mp3_encoder_name_version(encoder: AEncoder) -> tuple[str, list[int]]:
+    """Extract encoder name and version from strings like 'LAME 3.100.0+' and 'Lavf58.20.100'
+
+    """
+    pattern = r'([a-zA-Z]+)\s*(\d+)\.?(\d+)\.?(\d+)\+?'
+    match = re.match(pattern, encoder.text)
+    if match:
+        name = str(match.group(1))
+        # Filter out empty strings from version parts
+        version_parts = list(map(int, filter(None, match.groups()[1:])))
+        return name, version_parts
+    else:
+        return encoder.text, []
+
+def mp3_beatgrid_offset(encoder: AEncoder | None) -> float:
+    if encoder is None:
+        return 0.0
+    else:
+        name, version = mp3_encoder_name_version(encoder)
+        # Verified that this version with '-V0' doesn't shift the beatgrid.
+        # Assume that other modes are good as well.
+        if name == 'LAME' and version >= [3, 100, 0]:
+            return 0.0
+        # 'Lavf' is the 'ffmpeg' library which doesn't include and MP3 encoder.
+        # It usually links to 'LAME'. Thus the version of 'Lavf' doesn't
+        # directly give the encoder version. However, it's reasonable to assume
+        # that it will use a version of 'LAME' that was recent at the time of
+        # the release of 'ffmpeg' version.
+
+        # Seems that the same delay applies since version 57.83.100.
+        # # version around De_Lacy_-_Hideaway
+        # elif name == 'Lavf' and version >= [58, 20, 100]:
+        #     return -0.016 # between -0.019 and -0.013
+
+        # version around 'The Weekend -- The Todd Terry Project'
+        elif name == 'Lavf' and version >= [57, 83, 100]:
+            return -0.016
+        else:
+            # if we don't know the encoder we try the same as ffmpeg
+            return -0.016
+
+
 def beatgrid_offset(at: ATrack, trans: ATransformation) -> float:
     """BeatGrid offset relative to Serato DJ Pro 3.3.2 in seconds.
 
@@ -92,7 +136,15 @@ def beatgrid_offset(at: ATrack, trans: ATransformation) -> float:
                 case AFormat.M4A:
                     return 0.046
                 case AFormat.MP3:
-                    # Files encoded with 'lame -V0' are NOT shifted
+                    return mp3_beatgrid_offset(at.data_source.encoder)
+                case _:
+                    # LOSSLESS formats are not shifted
+                    return 0.0
+        case ASoftwareInfo(ASoftware.TRAKTOR, _):
+            match at.aformat:
+                case AFormat.M4A:
+                    return 0.0
+                case AFormat.MP3:
                     return 0.0
                 case _:
                     # LOSSLESS formats are not shifted
@@ -100,18 +152,28 @@ def beatgrid_offset(at: ATrack, trans: ATransformation) -> float:
         case _:
             raise ValueError(f'{trans.target.software} currently not supported.')
 
+def marker_offset(at: ATrack, trans: ATransformation) -> float:
+    """Marker offset relative to Serato DJ Pro 3.3.2 in seconds.
+
+    dt = t_target - t_serato_dj_pro
+    """
+    # Currently we don't observe difference from beatgrid.
+    return beatgrid_offset(at, trans)
+
+
 def adjust_time(at: ATrack, trans: ATransformation) -> ATrack:
     """Adjust the markers and beatgrid time according to target.
     """
-    offset = beatgrid_offset(at, trans)
+    m_offset = marker_offset(at, trans)
     new_markers = []
     for m in at.markers:
-        new_start = m.start + offset
-        new_end = (m.end + offset) if m.end is not None else None
+        new_start = m.start + m_offset
+        new_end = (m.end + m_offset) if m.end is not None else None
         new_markers = new_markers + [replace(m, start=new_start, end=new_end)]
+    bg_offset = beatgrid_offset(at, trans)
     new_beatgrid = []
     for bg in at.beatgrid:
-        new_position = bg.position + offset
+        new_position = bg.position + bg_offset
         new_beatgrid = new_beatgrid + [replace(bg,position=new_position)]
     return replace(at, markers=new_markers, beatgrid=new_beatgrid)
 
@@ -153,29 +215,45 @@ def reindex_sdjpro_loops(markers: list[AMarker], trans: ATransformation) -> list
 
 ###### ENCODERS ######
 
-def mp3_encoder(audio: FileType) -> str | None:
+def mp3_endocer_bitrate_mode(mode: mutagen.mp3.BitrateMode) -> AEncoderMode:
+    match mode:
+        case mutagen.mp3.BitrateMode.CBR:
+            return AEncoderMode.CBR
+        case mutagen.mp3.BitrateMode.VBR:
+            return AEncoderMode.VBR
+        case _:
+            return AEncoderMode.UNKNOWN
+
+
+def mp3_encoder(audio: FileType) -> AEncoder | None:
     if audio.info is not None and audio.info.encoder_info != '':
-        return audio.info.encoder_info
+        text = audio.info.encoder_info
+        settings = audio.info.encoder_settings
+        mode = mp3_endocer_bitrate_mode(audio.info.bitrate_mode)
     elif audio.tags is not None and 'TSSE' in audio.tags.keys():
-        return audio.tags['TSSE'].text[0]
+        text = audio.tags['TSSE'].text[0]
+        settings = ''
+        mode = AEncoderMode.UNKNOWN
     else:
         return None
+    return AEncoder(text, settings, mode)
 
-def audio_endocer(audio: FileType) -> str | None:
+
+def audio_endocer(audio: FileType) -> AEncoder | None:
     ks = audio.tags.keys() if audio.tags is not None else None
     match audio_file_type(audio):
         case AFormat.MP3:
             return mp3_encoder(audio)
         case AFormat.M4A:
             k = '©too'
-            return audio.tags[k][0] if ks is not None and k in ks else None # pyright: ignore
+            return AEncoder(audio.tags[k][0]) if ks is not None and k in ks else None # pyright: ignore
         case AFormat.FLAC:
             if ks is not None and 'ENCODEDBY' in ks:
                 k = 'ENCODEDBY'
-                return audio.tags[k] if k in ks else None # pyright: ignore
+                return AEncoder(audio.tags[k]) if k in ks else None # pyright: ignore
             elif ks is not None and 'ENCODER' in ks:
                 k = 'ENCODER'
-                return audio.tags[k] if k in ks else None # pyright: ignore
+                return AEncoder(audio.tags[k]) if k in ks else None # pyright: ignore
             else:
                 return None
         case _:

@@ -1,6 +1,6 @@
 from datetime import date
 from pathlib import Path
-from enum import Enum, StrEnum, auto
+from enum import Enum, IntEnum, StrEnum, auto
 from dataclasses import dataclass, field
 
 class AFormat(StrEnum):
@@ -106,6 +106,20 @@ class ASoftware(StrEnum):
     REKORDBOX = auto()
     TRAKTOR = auto()
 
+class AEncoderMode(IntEnum):
+    UNKNOWN = auto()
+    CBR = auto()
+    VBR = auto()
+    ABR = auto()
+
+# Information that may be useful in setting a beatgrid shift.
+# 'bitrate' and 'sample_rate' are in ATrack.
+@dataclass
+class AEncoder:
+    text: str
+    settings: str = ''
+    mode: AEncoderMode = AEncoderMode.UNKNOWN
+
 # version is the number in the Serato Marker2 analisys tag. However,
 # the meaning of this value is unclear ([2,1] for MP3 and [0,1,0] for
 # FLAC and M4A).
@@ -124,9 +138,9 @@ class ASoftware(StrEnum):
 class ADataSource:
     software: ASoftware
     version: list[int] # data format version
-    encoder: str | None = None # None means that it's
-                               # unspecified. This is usefule for
-                               # example in loss-less.
+    encoder: AEncoder | None = None # None means that it's
+                                    # unspecified. This is usefule for
+                                    # example in loss-less.
 
 @dataclass
 class ATrack:

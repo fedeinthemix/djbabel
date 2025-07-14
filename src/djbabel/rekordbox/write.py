@@ -236,12 +236,14 @@ def rb_battito(bpms: list[ABeatGridBPM], idx: int):
       bpms: list of BPMs.
       idx: changes index for which to calculate the battito.
     """
-    battito = 1
+    # metro is fixed for an entire track.
+    metro = bpms[0].metro[1] if len(bpms) > 0 else 4
+    battito = 0
     for i, m in enumerate(bpms[:idx]):
         dt = bpms[i+1].position - m.position
         dbeats = m.bpm * dt / 60
-        battito = (battito + dbeats) % m.metro[1]
-    return int(battito)
+        battito += dbeats
+    return 1 + round(battito) % metro
 
 ##### Min ##########
 

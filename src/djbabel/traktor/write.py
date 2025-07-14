@@ -1,5 +1,5 @@
 from ..types import AMarkerType, ATrack, ATransformation, AMarker, ABeatGridBPM, APlaylist
-from ..utils import CLASSIC2ABBREV_KEY_MAP, CLASSIC2CAMLEOT_KEY_MAP, is_str_or_none, is_int_or_none, is_float_or_none, is_date_or_none, CLASSIC2OPEN_KEY_MAP, reindex_sdjpro_loops, s_to_ms
+from ..utils import CLASSIC2ABBREV_KEY_MAP, CLASSIC2CAMLEOT_KEY_MAP, is_str_or_none, is_int_or_none, is_float_or_none, is_date_or_none, CLASSIC2OPEN_KEY_MAP, reindex_sdjpro_loops, s_to_ms, adjust_time
 from .utils import traktor_path, location_volume_id
 
 from dataclasses import Field, fields
@@ -374,7 +374,8 @@ def to_traktor_playlist(playlist: APlaylist, ofile: Path, trans: ATransformation
 
     # ENTRY SUb-sub-elements
     for at in playlist.tracks:
-        e = to_traktor(at, trans)
+        new_at = adjust_time(at, trans)
+        e = to_traktor(new_at, trans)
         coll.append(e)
 
     # SETS sub-element

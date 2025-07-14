@@ -274,6 +274,9 @@ def beatgrid(audio: FileType) -> list[ABeatGridBPM]:
                 pos = bg[i-1].position
                 bpm = bg[i-1].beats_till_next_marker * 60 / (bg[i].position - pos)
                 res = res + [ABeatGridBPM(pos, bpm)]
+                if pos < 0:
+                    fn = audio.filename
+                    warnings.warn(f"track {fn} has a beatgrid marker at negative time {pos}.\nThis may result in a shifted beatgrid.")
             return res + [ABeatGridBPM(bg[-2].position, bg[-2].bpm)]
 
     bg = get_serato_beatgrid(audio)

@@ -158,10 +158,10 @@ from djbabel.traktor.utils import traktor_path
 
 fn = Path('subcrates') / 'FEBE_MIX_80_90.crate'
 
-wp = PureWindowsPath('C:\\Users\\beffa\\test.m4a')
-anchor = Path('/run/media/beffa/FBE\\ HDD\\ 1/backups/orione-backpc-windows/')
-relative = Path('Users/beffa')
-pl = read_serato_playlist(fn, anchor, relative)
+# wp = PureWindowsPath('C:\\Users\\beffa\\test.m4a')
+# anchor = Path('/run/media/beffa/FBE\\ HDD\\ 1/backups/orione-backpc-windows/')
+# relative = Path('Users/beffa')
+# pl = read_serato_playlist(fn, anchor, relative)
 
 with open(fn, "rb") as f:
     data = f.read()
@@ -176,14 +176,23 @@ get_track_paths(flds)
 from djbabel.rekordbox import to_rekordbox_playlist
 from djbabel.rekordbox.write import to_rekordbox
 
+file_mp3_4 = Path('audio') / 'Ultra_Nate_-_Free_(Original_Mix).mp3'
+file_mp3_5 = Path('audio') / 'De_Lacy_-_Hideaway_(Deep_Dish_Remix).mp3'
+
+audio_mp3_4 = mutagen.File(file_mp3_4, easy=False)
+audio_mp3_5 = mutagen.File(file_mp3_5, easy=False)
+
 a1 = from_serato(audio_mp3)
 a_flac = from_serato(audio_flac)
 a_m4a = from_serato(audio_m4a)
+a4 = from_serato(audio_mp3_4)
+a5 = from_serato(audio_mp3_5)
 
 trans = ATransformation(parse_input_format('sdjpro'),
                         parse_output_format('rb7'))
 
-apl = APlaylist("party", [a1, a_flac, a_m4a])
+apl = APlaylist("party", [a1, a_flac, a_m4a, a4, a5])
+# apl = APlaylist("party", [a1, a_flac, a_m4a])
 to_rekordbox_playlist(apl, Path("pl_rekordbox.xml"), trans)
 
 ##########################################################
@@ -369,35 +378,140 @@ audio_mp3.tags['TSSE']
 audio_m4a.tags['©too']
 audio_flac.tags.keys()
 
-# file_mp3 = Path("audio") / "The_Todd_Terry_Project_-_Weekend.mp3"
+file_mp3_1 = Path("audio") / "The_Todd_Terry_Project_-_Weekend.mp3"
 file_m4a_2 = Path("audio") / "blow-go-reencoded_with_qaac.m4a"
-file_mp3_2 = Path("audio/beautiful_poples.mp3")
+# file_mp3_2 = Path("audio/beautiful_poples.mp3")
 file_mp3_3 = Path("audio") / "The_Todd_Terry_Project_-_Weekend-reencoded_with_lame.mp3"
+file_mp3_4 = Path('audio') / 'Ultra_Nate_-_Free_(Original_Mix).mp3'
+file_mp3_5 = Path('audio') / 'De_Lacy_-_Hideaway_(Deep_Dish_Remix).mp3'
 
-# audio_mp3: MP3 = mutagen.File(file_mp3, easy=False) # type: ignore[reportUnknownMemberType]
+audio_mp3_1: MP3 = mutagen.File(file_mp3, easy=False) # type: ignore[reportUnknownMemberType]
 audio_m4a_2 = mutagen.File(file_m4a_2, easy=False)
-audio_mp3_2 = mutagen.File(file_mp3_2, easy=False)
+# audio_mp3_2 = mutagen.File(file_mp3_2, easy=False)
 audio_mp3_3 = mutagen.File(file_mp3_3, easy=False)
+audio_mp3_3 = mutagen.File(file_mp3_3, easy=False)
+audio_mp3_4 = mutagen.File(file_mp3_4, easy=False)
+audio_mp3_5 = mutagen.File(file_mp3_5, easy=False)
 
 audio_m4a_2.tags['©too']
-audio_mp3_2.tags['TSSE']
+# audio_mp3_2.tags['TSSE']
+
+i_1 = audio_mp3_1.info
+audio_mp3_1.tags['TSSE']
+i_1.encoder_info
+i_1.encoder_settings
+i_1.bitrate_mode
+
+
+i_3 = audio_mp3_3.info
+# audio_mp3_3.tags['TSSE']
 audio_mp3_3.info.encoder_info
 audio_mp3_3.info.encoder_settings
+audio_mp3_3.info.bitrate_mode
+
+i_4 = audio_mp3_4.info
+audio_mp3_4.tags['TSSE']
+audio_mp3_4.info.encoder_info
+audio_mp3_4.info.encoder_settings
+audio_mp3_4.info.bitrate_mode
+
+i_5 = audio_mp3_5.info
+audio_mp3_5.tags['TSSE']
+audio_mp3_5.info.encoder_info
+audio_mp3_5.info.encoder_settings
+audio_mp3_5.info.bitrate_mode
+
 
 a_mp3_2 = from_serato(audio_mp3_2)
 a_mp3_3 = from_serato(audio_mp3_3)
+
+################
+# 'Free (Original Mix)'
+
+a_4 = from_serato(audio_mp3_4)
+m_4 = a_4.markers
+bg_4 = a_4.beatgrid
+p_sdjpro_4 = bg_4[0].position
+# Beatgrid shifted by -13ms!
+dt_4 = 0.363 - p_sdjpro_4
+      # <TEMPO Inizio="0.363" Bpm="125.00" Metro="4/4" Battito="1"/>
+
+m_4_rb7 = [
+    0.376,
+    107.896,
+    169.336,
+    200.056,
+    123.256,
+]
+# <POSITION_MARK Name="64" Type="0" Start="0.376" Num="0" Red="165" Green="225"
+#                Blue="22"/>
+# <POSITION_MARK Name="32" Type="0" Start="107.896" Num="1" Red="230" Green="40"
+#                Blue="40"/>
+# <POSITION_MARK Name="hook free" Type="0" Start="169.336" Num="2" Red="224" Green="100"
+#                Blue="27"/>
+# <POSITION_MARK Name="32" Type="0" Start="200.056" Num="3" Red="230" Green="40"
+#                Blue="40"/>
+# <POSITION_MARK Name="" Type="4" Start="123.256" End="138.616" Num="7" Red="80"
+#                Green="180" Blue="255"/>
+
+# markers are NOT shifted!
+dt_m_4 = list(map(lambda a, b: a - b.start, m_4_rb7, m_4))
+
+################
+# 'Hideaway (Deep Dish Remix)'
+
+a_5 = from_serato(audio_mp3_5)
+m_5 = a_5.markers
+bg_5 = a_5.beatgrid
+# has 1 BG
+p_sdjpro_5 = bg_5[0].position
+# Beatgrid shifted by -19ms!
+dt_5 = 0.474 - p_sdjpro_5
+# <TEMPO Inizio="0.474" Bpm="122.00" Metro="4/4" Battito="1"/>
+
+m_5_rb7 = [
+    0.493,
+    110.656,
+    126.394,
+    299.509,
+    346.722,
+    346.722,
+]
+# <POSITION_MARK Name="4 x 32" Type="0" Start="0.493" Num="0" Red="40" Green="226"
+#                Blue="20"/>
+# <POSITION_MARK Name="32" Type="0" Start="110.656" Num="1" Red="40" Green="226"
+#                Blue="20"/>
+# <POSITION_MARK Name="I need a man" Type="0" Start="126.394" Num="2" Red="48"
+#                Green="90" Blue="255"/>
+# <POSITION_MARK Name="" Type="0" Start="299.509" Num="3" Red="224" Green="100"
+#                Blue="27"/>
+# <POSITION_MARK Name="" Type="0" Start="346.722" Num="4" Red="230" Green="40"
+#                Blue="40"/>
+# <POSITION_MARK Name="" Type="4" Start="346.722" End="362.460" Num="7" Red="80"
+#                Green="180" Blue="255"/>
+
+# markers are NOT shifted!
+dt_m_5 = list(map(lambda a, b: a - b.start, m_5_rb7, m_5))
 
 ##########################################################
 # Traktor
 
 from djbabel.traktor.write import info_tag, entry_tag, album_tag, modification_info_tag, tempo_tag, musical_key_tag, loudness_tag, location_tag, cue_v2_beatgrid, cue_v2_markers, to_traktor_playlist
 
+file_mp3_4 = Path('audio') / 'Ultra_Nate_-_Free_(Original_Mix).mp3'
+file_mp3_5 = Path('audio') / 'De_Lacy_-_Hideaway_(Deep_Dish_Remix).mp3'
+
+audio_mp3_4 = mutagen.File(file_mp3_4, easy=False)
+audio_mp3_5 = mutagen.File(file_mp3_5, easy=False)
+
 a1 = from_serato(audio_mp3)
 a_flac = from_serato(audio_flac)
 a_m4a = from_serato(audio_m4a)
+a4 = from_serato(audio_mp3_4)
+a5 = from_serato(audio_mp3_5)
 
 trans = ATransformation(parse_input_format('sdjpro'),
-                        parse_output_format('rb7'))
+                        parse_output_format('traktor4'))
 
 itag = info_tag(a1, trans)
 etag = entry_tag(a1, trans)
@@ -410,8 +524,35 @@ ctag = location_tag(a1, trans)
 btag = cue_v2_beatgrid(a1.beatgrid[0])
 cuetag = cue_v2_markers(a1.markers[0])
 
-apl = APlaylist("party", [a1, a_flac, a_m4a])
+apl = APlaylist("party", [a1, a_flac, a_m4a, a4, a5])
 to_traktor_playlist(apl, Path("pl_traktor.nml"), trans)
+
+##########################################################
+# battito
+
+from djbabel.rekordbox.write import rb_battito, adjust_time
+
+file_mp3_6 = Path('audio') / '2-01-Paid_in_Full.m4a'
+audio_mp3_6 = mutagen.File(file_mp3_6, easy=False)
+a6 = from_serato(audio_mp3_6)
+
+trans = ATransformation(parse_input_format('sdjpro'),
+                        parse_output_format('rb7'))
+
+
+new_a6 = adjust_time(a6, trans)
+for i, m in enumerate(new_a6.beatgrid):
+    battito = rb_battito(new_a6.beatgrid, i)
+    print(f"track {a6.title}: bpm: {m.bpm}, battito: {battito}")
+
+for i, m in enumerate(a6.beatgrid):
+    battito = rb_battito(a6.beatgrid, i)
+    print(f"track {new_a6.title}: bpm: {m.bpm}, battito: {battito}")
+
+for i, m in enumerate(a1.beatgrid):
+    battito = rb_battito(a1.beatgrid, i)
+    print(f"track {a1.title}: battito: {battito}")
+
 
 ##########################################################
 
