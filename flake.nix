@@ -38,6 +38,7 @@
         release = pkgs.${system}.mkShell {
           packages = [
             pkgs.${system}.hatch
+            pkgs.${system}.sphinx
             (pkgs.${system}.python3.withPackages (ps: with ps; [
               # dependencies
               self.packages.${system}.basic-colormath

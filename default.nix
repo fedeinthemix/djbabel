@@ -27,12 +27,12 @@ python3Packages.buildPythonPackage rec {
 
   outputs = [
     "out"
-    # "doc"
+    "doc"
   ];
 
   nativeCheckInputs = [
     python3Packages.pytestCheckHook
-    # python3Packages.sphinxHook
+    python3Packages.sphinxHook
   ];
 
   meta = {
