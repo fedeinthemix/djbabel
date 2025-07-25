@@ -9,7 +9,7 @@ import warnings
 from .types import ASoftwareInfo, APlaylist, ASoftware, ATransformation
 from .serato import read_serato_playlist
 from .rekordbox import to_rekordbox_playlist
-from .traktor import to_traktor_playlist
+from .traktor import to_traktor_playlist, read_traktor_playlist
 
 #######################################################################
 # Warnings
@@ -30,6 +30,8 @@ def parse_input_format(arg: str) -> ASoftwareInfo:
     match arg:
         case 'sdjpro':
             return ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,3,2))
+        case 'traktor4':
+            return ASoftwareInfo(ASoftware.TRAKTOR, (4,2,0))
         case _:
             raise ValueError(f'Input format {arg} not supported')
 
@@ -50,6 +52,8 @@ def get_playlist(filepath: Path, trans: ATransformation, anchor: Path | None, re
     match trans.source:
         case ASoftwareInfo(ASoftware.SERATO_DJ_PRO, _):
             return read_serato_playlist(filepath, anchor, relative)
+        case ASoftwareInfo(ASoftware.TRAKTOR, (4, _, _)):
+            return read_traktor_playlist(filepath, None, anchor, relative)
         case _:
             raise ValueError(f'Source format {trans.source} not supported.')
 
@@ -78,7 +82,7 @@ def output_filename(ofile: Path | None, ifile: Path, trans: ATransformation) -> 
         if overwrite.lower() != 'y':
             raise ValueError(f'Please choose another target playlist file name.')
     return ofile
-    
+
 #######################################################################
 # Main
 
@@ -107,7 +111,7 @@ def main():
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument("ifile", type=Path,
                         help="input playlist path")
-    parser.add_argument('-s', '--source', type=str, choices=['sdjpro'],
+    parser.add_argument('-s', '--source', type=str, choices=['sdjpro', 'traktor4'],
                         default='sdjpro',
                         help='source playlist format')
     parser.add_argument('-t', '--target', type=str, choices=['rb7', 'traktor4'],

@@ -115,7 +115,7 @@ class TestRekordbox:
                                  'Grouping': 'grouping',
                                  'Genre': 'genre',
                                  'kind': 'FLAC File',
-                                 'Size': '0',
+                                 'Size': '12345',
                                  'TotalTime': '1',
                                  'DiscNumber': '0',
                                  'TrackNumber': '2',

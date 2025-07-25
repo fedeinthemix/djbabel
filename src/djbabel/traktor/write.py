@@ -1,10 +1,11 @@
-from ..types import AMarkerType, ATrack, ATransformation, AMarker, ABeatGridBPM, APlaylist
-from ..utils import CLASSIC2ABBREV_KEY_MAP, CLASSIC2CAMLEOT_KEY_MAP, is_str_or_none, is_int_or_none, is_float_or_none, is_date_or_none, CLASSIC2OPEN_KEY_MAP, reindex_sdjpro_loops, s_to_ms, adjust_time
-from .utils import traktor_path, location_volume_id
+from ..types import ATrack, ATransformation, AMarker, ABeatGridBPM, APlaylist
+from ..utils import CLASSIC2ABBREV_KEY_MAP, CLASSIC2CAMLEOT_KEY_MAP, OPEN_KEY2MUSICAL_KEY_MAP, is_str_or_none, is_int_or_none, is_float_or_none, is_date_or_none, CLASSIC2OPEN_KEY_MAP, reindex_sdjpro_loops, s_to_ms, adjust_time, inverse_dict
+from .utils import TRAKTOR_MARKERTYPE_MAP, traktor_path, location_volume_id, is_album_tag_attr, is_entry_tag_attr, is_tempo_tag_attr, is_info_tag_attr, traktor_attr_name
 
 from dataclasses import Field, fields
-from datetime import date
+from datetime import date, datetime
 from functools import reduce
+from math import ceil
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -23,7 +24,8 @@ import uuid
 # - AUDIO_ID, (required), audio fingerprint. Set it to "" to leave the job to Traktor.
 # - TITLE, (required)
 # - ARTIST, (required)
-# - LOCK="1", verify! According to Gemini it's the master lock of the file.
+# - LOCK="1", Beatgrid lock.
+# - LOCK_MODIFICATION_TIME="2025-07-09T15:13:07"
 
 ### Sub-tags and their attributes
 
@@ -79,126 +81,35 @@ import uuid
 # - HOTCUE="-1", 0 based index, -1: not listed in the hot cue GUI
 # - <GRID BPM="126.999878"></GRID>
 
-### FLAGS
-# Is a 7 bit bitmask with the following meaning:
-
-# 1 (Bit 0): Unplayed/New Track.
-
-# 2 (Bit 1): Beatgrid Locked.
-
-# 4 (Bit 2): Missing/Locate Warning.
-
-# 8 (Bit 3): Analyzed (Key/BPM).
-
-# 16 (Bit 4): Played (at least once).
-
-# 32 (Bit 5): UNCERTAIN: reporter as
-# - (most likely) "Has Waveform Data" / "Stripes Generated"
-# OR
-# - (Less commonly confirmed) Custom Fade In/Out Set.
-
-# 64 (Bit 6): Stem File.
-
-#######################################################################
-# Mappings
-
-# Map AMarkerType into the corresponding Rekordbox number
-# 4: Grid / Beat Marker / AutoGrid (Used for automatic beatgrid markers)
-TRAKTOR_MARKERTYPE_MAP = {
-    AMarkerType.CUE : "0",
-    AMarkerType.FADE_IN : "2",
-    AMarkerType.FADE_OUT : "3",
-    AMarkerType.CUE_LOAD : "1",
-    AMarkerType.LOOP : "5"
-}
-
-# Includes mapping of fields from ATrack to the Traktor Pro 4 NML name of
-# only those fields:
-# 1) Whose mapping is not a simple conversion to UPPERCASE.
-# 2) Are not used. In this case the name maps to None
-# The later are mapped via a function.
-TRAKTOR_FIELD_NAMES_MAP = {
-    # 'title',
-    # 'artist',
-    # 'composer',
-    # 'album', TAG, this is the title
-    'grouping' : None,
-    # 'genre',
-    # 'aformat',
-    'size' : 'FILESIZE',
-    'total_time' : 'PLAYTIME',
-    # 'disc_number', in ALBUM TAG
-    'track_number': 'TRACK', # in ALBUM TAG
-    # 'release_date',
-    'average_bpm' : 'BPM', # in TEMPO TAG
-    'date_added' : 'IMPORT_DATE',
-    'bit_rate' : 'BITRATE',
-    'sample_rate' : None,
-    'comments' : 'COMMENT',
-    'play_count' : 'PLAYCOUNT',
-    # 'rating',
-    # 'location', # IS a TAG
-    # 'remixer',
-    'tonality' : 'KEY',
-    # 'label',
-    'mix' : None,
-    # 'data_source',
-    # 'markers',
-    # 'beatgrid',
-    # 'locked',
-    # 'color',
-    'trackID' : None,
-    # 'loudness'
-}
+### FLAGS (FBE experiments):
+# Bit 0: ?
+# Bit 1: ?
+# Bit 2: set after any analysis
+# Bit 3: set after any analysis
+# Bit 4: beatgrid lock
+# Bit 5: ?
+# Bit 6: STEM file
 
 ###################################################################
+
 ########## Helpers ######################
-
-def make_is_tag_attr_predicate(fns: list[str]):
-    """Construct a predicate taking a field and checking if its name is in a list.
-    """
-    def predicate(f: Field) -> bool:
-        n = f.name
-        if n in fns:
-            return True
-        else:
-            return False
-
-    return predicate
-
-is_album_tag_attr =  make_is_tag_attr_predicate(['track_number', 'disc_number', 'album'])
-is_entry_tag_attr = make_is_tag_attr_predicate(['title', 'artist'])
-is_location_tag_attr = make_is_tag_attr_predicate(['location'])
-is_tempo_tag_attr = make_is_tag_attr_predicate(['average_bpm'])
-is_loudness_tag_attr = make_is_tag_attr_predicate(['loudness'])
-is_cue_v2_tag_attr = make_is_tag_attr_predicate(['marker', 'beatgrid'])
-
-def is_info_tag_attr(f: Field) -> bool:
-    if not (is_album_tag_attr(f) or is_entry_tag_attr(f) or is_location_tag_attr(f) or is_tempo_tag_attr(f) or is_loudness_tag_attr(f) or is_cue_v2_tag_attr(f)):
-        return True
-    else:
-        return False
-
-
-def traktor_attr_name(s: str) -> str | None:
-    """Convert an ATrack field name (as a string) into the name used by Traktor.
-    """
-    if s in TRAKTOR_FIELD_NAMES_MAP.keys():
-        return TRAKTOR_FIELD_NAMES_MAP[s]
-    else:
-        return s.upper()
-
-
 def tag_attr(at: ATrack, f: Field) -> list[tuple[str,str]]:
     v = getattr(at, f.name)
     n = traktor_attr_name(f.name)
     if n is None: # skip unused parameters
         return []
     elif f.name == 'size':
-        return [( n, str(int(v/1000)) if v is not None else "0")]
+        return [( n, str(round(v/1000)) if v is not None else "0")]
     elif f.name == 'total_time':
         tt = v if v is not None else 0
-        return [( n, str(int(tt))), ('PLAYTIME_FLOAT', str(tt))]
+        return [( n, str(ceil(tt))), ('PLAYTIME_FLOAT', str(tt))]
+    elif f.name == 'locked':
+        lt = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        return [( n, str(int(v))), ('LOCK_MODIFICATION_TIME', lt)]
+    elif f.name == 'bit_rate':
+        # We let Traktor detect the bitrate as it uses '-1' for VBR,
+        # but mutagen doesn't provide the encoding mode.
+        return []
     elif is_str_or_none(f.type):
         return [( n, v if v is not None else "")]
     elif is_int_or_none(f.type):
@@ -213,8 +124,8 @@ def tag_attr(at: ATrack, f: Field) -> list[tuple[str,str]]:
 
 def traktor_info_flags(at: ATrack) -> str:
     # should we lock it?
-    # return str(1 + 2*int(at.locked) + 4*0 + 8*1 + 16*0 + 32*0 + 64*0)
-    return str(1 + 2*0 + 4*0 + 8*1 + 16*0 + 32*0 + 64*0)
+    return str(1*0 + 2*0 + 4*1 + 8*1 + 16*int(at.locked) + 32*0 + 64*0)
+    # return str(1*0 + 2*0 + 4*1 + 8*1 + 16*0 + 32*0 + 64*0)
 
 
 def make_tag(name: str, predicate, init: list[tuple[str,str]]):
@@ -285,16 +196,16 @@ def loudness_tag(at: ATrack, trans: ATransformation) -> ET.Element:
 def musical_key_tag(at: ATrack, trans: ATransformation) -> ET.Element:
     t = at.tonality
     if t is not None:
-        k = ""
         if len(t) == 2 and t[0].isdigit(): # Camleot
-            camleot2classic = {value: key for key, value in CLASSIC2CAMLEOT_KEY_MAP.items()}
-            k = CLASSIC2OPEN_KEY_MAP[camleot2classic[t]]
+            camleot2classic = inverse_dict(CLASSIC2CAMLEOT_KEY_MAP)
+            classic_key = camleot2classic[t]
         elif 1 <= len(t) <= 2 or (2 <= len(t) <= 3 and t[1] in ['#', 'b']): # Abbreviated
-            abbrev2classic = {value: key for key, value in CLASSIC2ABBREV_KEY_MAP.items()}
-            k = CLASSIC2OPEN_KEY_MAP[abbrev2classic[t]]
+            abbrev2classic = inverse_dict(CLASSIC2ABBREV_KEY_MAP)
+            classic_key = abbrev2classic[t]
         else: # Classic
-            k = CLASSIC2OPEN_KEY_MAP[t]
-        return ET.Element("MUSICAL_KEY", VALUE=k)
+            classic_key = t
+        k = OPEN_KEY2MUSICAL_KEY_MAP[CLASSIC2OPEN_KEY_MAP[classic_key]]
+        return ET.Element("MUSICAL_KEY", VALUE=str(k))
     else:
         raise ValueError(f'musical_key_tag: Can not convert {t} to Open-Key.')
 

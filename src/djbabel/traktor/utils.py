@@ -4,6 +4,99 @@ import subprocess
 from pathlib import Path
 import json
 import warnings
+from dataclasses import Field
+
+from ..types import AMarkerType
+
+#######################################################################
+# Mappings
+
+# Map AMarkerType into the corresponding Rekordbox number
+# 4: Grid / Beat Marker / AutoGrid (Used for automatic beatgrid markers)
+TRAKTOR_MARKERTYPE_MAP = {
+    AMarkerType.CUE : "0",
+    AMarkerType.FADE_IN : "1",
+    AMarkerType.FADE_OUT : "2",
+    AMarkerType.CUE_LOAD : "3",
+    AMarkerType.LOOP : "5"
+}
+
+# Includes mapping of fields from ATrack to the Traktor Pro 4 NML name of
+# only those fields:
+# 1) Whose mapping is not a simple conversion to UPPERCASE.
+# 2) Are not used. In this case the name maps to None
+# The later are mapped via a function.
+TRAKTOR_FIELD_NAMES_MAP = {
+    # 'title',
+    # 'artist',
+    # 'composer',
+    'album' : 'TITLE', # TAG, this is the title in ALBUM
+    'grouping' : None,
+    # 'genre',
+    # 'aformat',
+    'size' : 'FILESIZE',
+    'total_time' : 'PLAYTIME', # PLAYTIME_FLOAT is also added
+    # 'disc_number', in ALBUM TAG
+    'track_number': 'TRACK', # in ALBUM TAG
+    # 'release_date',
+    'average_bpm' : 'BPM', # in TEMPO TAG
+    'date_added' : 'IMPORT_DATE',
+    'bit_rate' : 'BITRATE', # XXX for VBR set ot -1
+    'sample_rate' : None,
+    'comments' : 'COMMENT',
+    'play_count' : 'PLAYCOUNT',
+    # 'rating',
+    # 'location', # IS a TAG
+    # 'remixer',
+    'tonality' : 'VALUE', # in MUSICAL_KEY tag, rather than the one in info.
+    # 'label',
+    'mix' : None,
+    # 'data_source',
+    # 'markers',
+    # 'beatgrid',
+    'locked' : 'LOCK',
+    # 'color',
+    'trackID' : None,
+    # 'loudness'
+}
+
+#########################################################################
+
+def make_is_tag_attr_predicate(fns: list[str]):
+    """Construct a predicate taking a field and checking if its name is in a list.
+    """
+    def predicate(f: Field | str) -> bool:
+        n = f.name if isinstance(f, Field) else f
+        if n in fns:
+            return True
+        else:
+            return False
+
+    return predicate
+
+is_album_tag_attr =  make_is_tag_attr_predicate(['track_number', 'disc_number', 'album'])
+is_entry_tag_attr = make_is_tag_attr_predicate(['title', 'artist', 'locked'])
+is_location_tag_attr = make_is_tag_attr_predicate(['location'])
+is_tempo_tag_attr = make_is_tag_attr_predicate(['average_bpm'])
+is_musical_key_attr = make_is_tag_attr_predicate(['tonality'])
+is_loudness_tag_attr = make_is_tag_attr_predicate(['loudness'])
+is_cue_v2_tag_attr = make_is_tag_attr_predicate(['marker', 'beatgrid'])
+
+def is_info_tag_attr(f: Field | str) -> bool:
+    if not (is_album_tag_attr(f) or is_entry_tag_attr(f) or is_location_tag_attr(f) or is_tempo_tag_attr(f) or is_musical_key_attr(f) or is_loudness_tag_attr(f) or is_cue_v2_tag_attr(f)):
+        return True
+    else:
+        return False
+
+
+def traktor_attr_name(s: str) -> str | None:
+    """Convert an ATrack field name (as a string) into the name used by Traktor.
+    """
+    if s in TRAKTOR_FIELD_NAMES_MAP.keys():
+        return TRAKTOR_FIELD_NAMES_MAP[s]
+    else:
+        return s.upper()
+
 
 #########################################################################
 

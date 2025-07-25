@@ -3,7 +3,7 @@ from dataclasses import replace
 from datetime import date
 import mutagen.mp3
 from mutagen._file import FileType # pyright: ignore
-from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
+from pathlib import Path, PurePath, PosixPath, WindowsPath
 
 import itertools
 import os
@@ -26,13 +26,13 @@ def audio_file_type(audio: FileType) -> AFormat:
     else:
         raise NotImplementedError("File format not supported")
 
-def path_anchor(ancor: Path | None) -> PurePath:
+def path_anchor(ancor: Path | None) -> Path:
     if ancor is None:
         match os.name:
             case 'nt':
-                return PureWindowsPath('C:\\')
+                return WindowsPath('C:\\')
             case 'posix':
-                return PurePosixPath('/')
+                return PosixPath('/')
             case _:
                 raise ValueError(f'OS {os.name} not supported')
     else:
@@ -48,6 +48,25 @@ def s_to_ms(x):
     """
     return x*1000
 
+def to_int(x: str | None) -> int:
+    if x is not None and x.isnumeric():
+        return int(x)
+    else:
+        return 0
+
+def to_float(x: str | None) -> float | None:
+    if x is None:
+        return None
+    elif x.isnumeric:
+        return float(x)
+    else:
+        ps = x.split('.')
+        assert len(ps) == 2, f"Can't convert {x} to a float."
+        if ps[0].isnumeric and ps[1].isnumeric:
+            return float(x)
+        else:
+            raise ValueError(f"Can't convert {x} to a float.")
+
 # base64 format: https://datatracker.ietf.org/doc/html/rfc4648.html
 def get_leading_base64_part(byte_string: bytes) -> bytes:
     """Base64 leading part of a byte string.
@@ -60,6 +79,10 @@ def get_leading_base64_part(byte_string: bytes) -> bytes:
     result_bytes = bytearray(itertools.takewhile(is_base64_char, iter(byte_string)))
 
     return bytes(result_bytes)
+
+
+def inverse_dict(d: dict) -> dict:
+    return {value: key for key, value in d.items()}
 
 ###### COLORS ######
 
@@ -233,7 +256,7 @@ def mp3_encoder(audio: FileType) -> AEncoder | None:
     elif audio.tags is not None and 'TSSE' in audio.tags.keys():
         text = audio.tags['TSSE'].text[0]
         settings = ''
-        mode = AEncoderMode.UNKNOWN
+        mode = mp3_endocer_bitrate_mode(audio.info.bitrate_mode) # pyright: ignore
     else:
         return None
     return AEncoder(text, settings, mode)
@@ -419,4 +442,15 @@ CLASSIC2OPEN_KEY_MAP = {
     'Gmin': '11m',
     'G#min': '6m',  # Or Abmin, Relative minor of Bmaj
     'Abmin': '6m',
+}
+
+# Open Key (e.g., "1d" for major, "1m" for minor) to Traktor musical_key number
+OPEN_KEY2MUSICAL_KEY_MAP = {
+    "1d": 1,   "2d": 2,   "3d": 3,   "4d": 4,
+    "5d": 5,   "6d": 6,   "7d": 7,   "8d": 8,
+    "9d": 9,  "10d": 10, "11d": 11, "12d": 12,
+
+    "1m": 13,  "2m": 14,  "3m": 15,  "4m": 16,
+    "5m": 17,  "6m": 18,  "7m": 19,  "8m": 20,
+    "9m": 21, "10m": 22, "11m": 23, "12m": 24
 }

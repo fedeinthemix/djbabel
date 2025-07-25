@@ -15,7 +15,7 @@ def atrack_input_1():
         'grouping',
         'genre',
         AFormat.FLAC, # aformat
-        0, # size
+        12345, # size
         1.0, # total_time
         0, # disc_number
         2, # track_number

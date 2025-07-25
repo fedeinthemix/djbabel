@@ -8,7 +8,7 @@ import sys
 sys.path.append('../src')
 
 from datetime import date
-from pathlib import Path, PureWindowsPath
+from pathlib import Path, PureWindowsPath, PurePath
 import warnings
 import os
 import string
@@ -553,6 +553,39 @@ for i, m in enumerate(a1.beatgrid):
     battito = rb_battito(a1.beatgrid, i)
     print(f"track {a1.title}: battito: {battito}")
 
+##########################################################
+# Traktor NML read
+
+from datetime import datetime
+
+from djbabel.traktor.read import find_collection_entry, from_traktor, get_str_attr, is_entry_tag_attr, get_tag_attr, is_album_tag_attr, get_album_subtag, is_info_tag_attr, get_info_subtag, traktor_attr_name, get_album_subtag, is_musical_key_attr, to_date, get_location, to_bool, get_cue_v2_beatgrid, get_cue_v2_cues, get_loudness, read_traktor_playlist
+
+nml_tree = ET.parse('nml/test.nml')
+nml_root = nml_tree.getroot()
+nml_col = nml_root.find('COLLECTION')
+
+pls = nml_root.findall('.//NODE[@TYPE="PLAYLIST"]')
+pl = pls[0]
+pl_keys = pl.findall('./PLAYLIST/ENTRY/PRIMARYKEY')
+
+e0 = find_collection_entry(nml_col, pl_keys[0].get('KEY'))
+e1 = find_collection_entry(nml_col, pl_keys[1].get('KEY'))
+
+t0_title = get_str_attr('title', e0)
+
+e0_cues = e0.findall('./CUE_V2[@TYPE!="4"]')
+
+e0_bg = get_cue_v2_beatgrid(e0)
+e0_cues = get_cue_v2_cues(e0)
+
+e0_ldns = get_loudness(e0)
+
+at0 = from_traktor(e0, 20)
+at1 = from_traktor(e1, 20)
+
+apl = read_traktor_playlist(Path('nml/test.nml'), 'test')
+
+apl_rel = read_traktor_playlist(Path('nml/test.nml'), 'test', Path('/mnt'), Path('/Users/beffa'))
 
 ##########################################################
 

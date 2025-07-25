@@ -3,7 +3,7 @@ from pathlib import Path, PureWindowsPath
 import pytest
 
 from djbabel.traktor.utils import traktor_path
-from djbabel.traktor.write import info_tag, entry_tag, album_tag, modification_info_tag, tempo_tag, musical_key_tag, loudness_tag, location_tag, cue_v2_beatgrid, cue_v2_markers, to_traktor_playlist
+from djbabel.traktor.write import info_tag, entry_tag, album_tag, modification_info_tag, tempo_tag, musical_key_tag, loudness_tag, location_tag, cue_v2_beatgrid, cue_v2_markers, to_traktor_playlist, entry_tag
 from djbabel.types import ABeatGridBPM, ADataSource, AFormat, ALoudness, AMarker, ASoftware, ASoftwareInfo, ATrack, ATransformation, AMarkerType, AMarkerColors
 
 ###############################################################
@@ -26,26 +26,26 @@ class TestTraktorTags:
 
     def test_traktor_info_tag(self, atrack_input_1):
         result = info_tag(atrack_input_1, self.trans)
-        assert result.attrib == {'FLAGS': '9',
+        assert result.attrib == {'FLAGS': '28',
                                  'COMPOSER': 'composer',
                                  'GENRE': 'genre',
-                                 'FILESIZE': '0',
+                                 'FILESIZE': '12',
                                  'PLAYTIME': '1',
                                  'PLAYTIME_FLOAT': '1.0',
                                  'RELEASE_DATE': '2025/01/01',
                                  'IMPORT_DATE': '2025/01/02',
-                                 'BITRATE': '320',
+                                 # 'BITRATE': '320', # we let Traktor calculate it
                                  'COMMENT': 'comments',
                                  'PLAYCOUNT': '0',
                                  'RATING': '5',
                                  'REMIXER': 'remixer',
-                                 'KEY': 'Bmaj',
-                                'LABEL': 'label'}
+                                 # 'KEY': 'Bmaj', # now use MUSICAL_KEY tag
+                                 'LABEL': 'label'}
 
 
     def test_traktor_album_tag(self, atrack_input_1):
         result = album_tag(atrack_input_1, self.trans)
-        assert result.attrib == {'ALBUM': 'album', 'DISC_NUMBER': '0', 'TRACK': '2'}
+        assert result.attrib == {'TITLE': 'album', 'DISC_NUMBER': '0', 'TRACK': '2'}
 
 
     def test_traktor_modification_info_tag(self, atrack_input_1):
@@ -60,7 +60,7 @@ class TestTraktorTags:
 
     def test_traktor_musical_key_tag(self, atrack_input_1):
         result = musical_key_tag(atrack_input_1, self.trans)
-        assert result.attrib == {'VALUE': '6d'}
+        assert result.attrib == {'VALUE': '6'}
 
     def test_traktor_loudness_tag(self, atrack_input_1):
         result = loudness_tag(atrack_input_1, self.trans)
@@ -93,3 +93,12 @@ class TestTraktorTags:
                                  'HOTCUE': '0',
                                  'REPEATS': '-1',
                                  'DISPL_ORDER': '0'}
+
+
+    def test_traktor_entry_tag(self, atrack_input_1):
+        result = entry_tag(atrack_input_1, self.trans)
+        assert result.attrib['ARTIST'] == 'artist'
+        assert result.attrib['AUDIO_ID'] == ''
+        assert result.attrib['LOCK'] == '1'
+        # 'LOCK_MODIFICATION_TIME' is set to the current time.
+        assert 'LOCK_MODIFICATION_TIME' in result.attrib.keys()

@@ -143,6 +143,11 @@ class ADataSource:
                                     # example in loss-less.
 
 @dataclass
+class AFlags:
+    beatgrid_locked: bool
+
+
+@dataclass
 class ATrack:
     title: str | None
     artist: str | None
@@ -151,15 +156,15 @@ class ATrack:
     grouping: str | None
     genre: str | None
     aformat: AFormat
-    size: int # number of bytes
-    total_time: float # [s]
+    size: int | None # number of bytes
+    total_time: float | None # [s]
     disc_number: int | None
     track_number: int | None
     release_date : date | None
     average_bpm: float | None
     date_added: date | None
-    bit_rate: int # [bps]
-    sample_rate: float # [Hz]
+    bit_rate: int | None # [bps]
+    sample_rate: float | None # [Hz]
     comments: str | None
     play_count: int | None
     rating: int | None # 0 to 5 stars
@@ -171,10 +176,11 @@ class ATrack:
     data_source: ADataSource
     markers: list[AMarker] = field(default_factory=list)
     beatgrid: list[ABeatGridBPM] = field(default_factory=list)
-    locked: bool = True
-    color: tuple[int, int, int] | None = None # track display colors (e.g. in Serato)
-    trackID: int | None = None # REMOVE!! Not necessary. How to set? Can we leave it empty in RekordBox?
+    locked: bool = True # file analysis locked
+    color: tuple[int, int, int] | None = None # track display color
+    trackID: int | None = None # RekordBox: trackID, Traktor: AUDIO_ID
     loudness: ALoudness | None = None
+    # flags: AFlags | None = None
 
 @dataclass
 class APlaylist:

@@ -132,11 +132,11 @@ def rb_attr(at: ATrack, f: Field, tid: int):
     """
     v = getattr(at, f.name)
     if f.name == 'total_time':
-        return [( rb_attr_name(f.name), str(ceil(v)) if v is not None else "0")]
+        return [( rb_attr_name(f.name), str(ceil(v)) if v is not None else "")]
     elif f.name == 'bit_rate':
-        return [( rb_attr_name(f.name), str(int(v/1000)) if v is not None else "0")]
+        return [( rb_attr_name(f.name), str(round(v/1000)) if v is not None else "")]
     elif f.name == 'release_date':
-        return [( rb_attr_name(f.name), str(v.year) if v is not None else "0")]
+        return [( rb_attr_name(f.name), str(v.year) if v is not None else "")]
     elif f.name == 'location':
         return [( rb_attr_name(f.name), rb_attr_location(v))]
     elif f.name == 'aformat':

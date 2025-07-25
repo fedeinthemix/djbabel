@@ -7,7 +7,7 @@ from .types import EntryBase
 # from djbabel.serato.overview import get_serato_overview
 from ..types import ATrack, AMarkerType, AMarker, ABeatGridBPM, ADataSource, ALoudness, ASoftware, AFormat, APlaylist
 from .utils import audio_file_type, parse_color, identity
-from ..utils import path_anchor, get_leading_base64_part, closest_color_perceptual, ms_to_s, audio_endocer
+from ..utils import path_anchor, get_leading_base64_part, closest_color_perceptual, ms_to_s, audio_endocer, to_int
 from .crate import take_fields, get_track_paths
 
 import base64
@@ -116,12 +116,6 @@ def head(ls: list[A]) -> A | None:
         return c
     else:
         return None
-
-def to_int(x) -> int:
-    if x is not None and x.isnumeric():
-        return int(x)
-    else:
-        return 0
 
 def track_number(s: str | None) -> int | None:
     if isinstance(s, str):
