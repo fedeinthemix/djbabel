@@ -1,0 +1,318 @@
+from datetime import date
+import datetime
+import mutagen
+from pathlib import Path, PurePosixPath, PureWindowsPath
+import pytest
+
+from djbabel.types import ABeatGridBPM, ADataSource, AFormat, ALoudness, AMarker, ASoftware, ASoftwareInfo, ATrack, ATransformation, AMarkerType, AMarkerColors, AEncoder, AEncoderMode
+from djbabel.utils import to_float
+
+from djbabel.serato.markers2 import CueEntry, get_serato_markers_v2, ColorEntry, BpmLockEntry, LoopEntry
+
+from djbabel.serato import std_tag_text, track_number, release_date, location, audio_file_type, beatgrid, get_markers, locked, average_bpm, loudness, data_source, get_serato_markers_v2
+
+###############################################################
+# Read files
+
+class TestSeratoReadTags:
+    
+    trans = ATransformation(ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,2,4)),
+                            ASoftwareInfo(ASoftware.REKORDBOX, (7,1,3)))
+
+    file_mp3 = Path("tests") / "audio" / "The_Todd_Terry_Project_-_Weekend.mp3"
+    file_flac = Path("tests") / "audio" / "MARRS-Pump_up_the_volume.flac"
+    file_m4a = Path("tests") / "audio" / "blow-go.m4a"
+
+    audio_mp3 = mutagen.File(file_mp3, easy=False)
+    audio_flac = mutagen.File(file_flac, easy=False)
+    audio_m4a = mutagen.File(file_m4a, easy=False)
+
+    ################ Lower-Level Functions ##################
+
+    # @pytest.mark.parametrize("audio, expected", [
+    #     (audio_mp3, [ColorEntry(b'\x00', b'\xff\xff\xff'),
+    #                  CueEntry(b'\x00',
+    #                           0,
+    #                           250,
+    #                           b'\x00',
+    #                           b'\xcc\x00\xcc',
+    #                           b'\x00\x00',
+    #                           'intro'),
+    #                  CueEntry(b'\x00',
+    #                           1,
+    #                           5810,
+    #                           b'\x00',
+    #                           b'\x00\xcc\x00',
+    #                           b'\x00\x00',
+    #                           '16'),
+    #                  CueEntry(b'\x00',
+    #                           2,
+    #                           154314,
+    #                           b'\x00',
+    #                           b'\xcc\x88\x00',
+    #                           b'\x00\x00',
+    #                           'tonoght the night'),
+    #                  CueEntry(b'\x00',
+    #                           3,
+    #                           185557,
+    #                           b'\x00',
+    #                           b'\xcc\x00\x00',
+    #                           b'\x00\x00',
+    #                           '3 x 32'),
+    #                  LoopEntry(b'\x00',
+    #                            0,
+    #                            201165,
+    #                            216791,
+    #                            b'\xff\xff\xff\xff',
+    #                            b'\x00',
+    #                            b"'\xaa\xe1",
+    #                            b'\x00',
+    #                            False,
+    #                            ''),
+    #                  BpmLockEntry(False)]),
+    #     # (audio_m4a, 'Go'),
+    #     # (audio_flac, 'Pump Up The Volume'),
+    # ])
+    # def test_serato_get_serato_markers_v2(self, audio, expected):
+    #     result = get_serato_markers_v2(audio)
+    #     assert result == expected
+    
+
+    ################ Higher-Level Functions ##################
+    
+    @pytest.mark.parametrize("fn, audio, expected", [
+        ('title', audio_mp3, 'Weekend (Original Mix)'),
+        ('title', audio_m4a, 'Go'),
+        ('title', audio_flac, 'Pump Up The Volume'),
+    ])
+    def test_serato_std_tag_text(self, fn, audio, expected):
+        result = std_tag_text(fn, audio)
+        assert result == expected
+
+
+    @pytest.mark.parametrize("fn, audio, expected", [
+        ('track_number', audio_mp3, 2),
+        ('track_number', audio_m4a, None),
+        ('track_number', audio_flac, None),
+    ])
+    def test_serato_track_number(self, fn, audio, expected):
+        result = track_number(std_tag_text(fn, audio))
+        assert result == expected
+
+
+    @pytest.mark.parametrize("audio, expected", [
+        (audio_mp3, date(1988, 8, 9)),
+        (audio_m4a, date(1988, 1, 1)),
+        (audio_flac, date(1987, 1, 1)),
+    ])
+    def test_serato_release_date(self, audio, expected):
+        result = release_date(audio)
+        assert result == expected
+
+
+    @pytest.mark.parametrize("audio, expected", [
+        (audio_mp3, file_mp3),
+        (audio_m4a, file_m4a),
+        (audio_flac, file_flac),
+    ])
+    def test_serato_location(self, audio, expected):
+        result = location(audio)
+        assert result == expected
+
+
+    @pytest.mark.parametrize("audio, expected", [
+        (audio_mp3, AFormat.MP3),
+        (audio_m4a, AFormat.M4A),
+        (audio_flac, AFormat.FLAC),
+    ])
+    def test_serato_audio_file_type(self, audio, expected):
+        result = audio_file_type(audio)
+        assert result == expected
+
+
+    @pytest.mark.parametrize("audio, expected", [
+        (audio_mp3, [ABeatGridBPM(position=5.803330421447754,
+                                  bpm=122.81898268224539,
+                                  metro=(4, 4)),
+                     ABeatGridBPM(position=154.3145751953125,
+                                  bpm=122.9070816040039,
+                                  metro=(4, 4))]),
+        (audio_m4a, [ABeatGridBPM(position=1.5416836738586426,
+                                  bpm=113.68891143798828,
+                                  metro=(4, 4))]),
+        (audio_flac, [ABeatGridBPM(position=0.5390172600746155,
+                                   bpm=112.5244137525537,
+                                   metro=(4, 4)),
+                      ABeatGridBPM(position=171.1686553955078,
+                                   bpm=107.47166923468498,
+                                   metro=(4, 4)),
+                      ABeatGridBPM(position=175.63494873046875,
+                                   bpm=107.87559969410886,
+                                   metro=(4, 4)),
+                      ABeatGridBPM(position=180.0845184326172,
+                                   bpm=113.63721091531743,
+                                   metro=(4, 4)),
+                      ABeatGridBPM(position=184.30848693847656,
+                                   bpm=112.48766989559304,
+                                   metro=(4, 4)),
+                      ABeatGridBPM(position=235.51409912109375,
+                                   bpm=112.48429107666016,
+                                   metro=(4, 4))]),
+    ])
+    def test_serato_beatgrid(self, audio, expected):
+        result = beatgrid(audio)
+        assert result == expected
+
+
+    @pytest.mark.parametrize("audio, expected", [
+        (audio_mp3, [AMarker(name='intro', color=AMarkerColors.MAGENTA,
+                             start=0.25,
+                             end=None,
+                             kind=AMarkerType.CUE,
+                             index=0,
+                             locked=False),
+                     AMarker(name='16', color=AMarkerColors.BRIGHT_GREEN,
+                             start=5.81,
+                             end=None,
+                             kind=AMarkerType.CUE,
+                             index=1,
+                             locked=False),
+                     AMarker(name='tonoght the night',
+                             color=AMarkerColors.ORANGE,
+                             start=154.314,
+                             end=None,
+                             kind=AMarkerType.CUE,
+                             index=2,
+                             locked=False),
+                     AMarker(name='3 x 32',
+                             color=AMarkerColors.RED,
+                             start=185.557,
+                             end=None,
+                             kind=AMarkerType.CUE,
+                             index=3,
+                             locked=False),
+                     AMarker(name='',
+                             color=AMarkerColors.SKY_BLUE,
+                             start=201.165,
+                             end=216.791,
+                             kind=AMarkerType.LOOP,
+                             index=0,
+                             locked=False)]),
+        (audio_m4a, [AMarker(name='16',
+                             color=AMarkerColors.LIME_gREEN,
+                             start=1.541,
+                             end=None,
+                             kind=AMarkerType.CUE,
+                             index=0,
+                             locked=False),
+                     AMarker(name='tromba',
+                             color=AMarkerColors.DARK_BLUE,
+                             start=9.691,
+                             end=None,
+                             kind=AMarkerType.CUE,
+                             index=1,
+                             locked=False),
+                     AMarker(name='32',
+                             color=AMarkerColors.RED,
+                             start=94.417,
+                             end=None,
+                             kind=AMarkerType.CUE,
+                             index=2,
+                             locked=False),
+                     AMarker(name='28',
+                             color=AMarkerColors.RED,
+                             start=174.636,
+                             end=None,
+                             kind=AMarkerType.CUE,
+                             index=3,
+                             locked=False),
+                     AMarker(name='',
+                             color=AMarkerColors.SKY_BLUE,
+                             start=98.645,
+                             end=107.089,
+                             kind=AMarkerType.LOOP,
+                             index=0,
+                             locked=True),
+                     AMarker(name='',
+                             color=AMarkerColors.SKY_BLUE,
+                             start=178.857,
+                             end=187.301,
+                             kind=AMarkerType.LOOP,
+                             index=1,
+                             locked=True)]),
+        (audio_flac, [AMarker(name='',
+                              color=AMarkerColors.LIME_gREEN,
+                              start=0.534,
+                              end=None,
+                              kind=AMarkerType.CUE,
+                              index=0,
+                              locked=False),
+                      AMarker(name='pump',
+                              color=AMarkerColors.ORANGE,
+                              start=180.078,
+                              end=None,
+                              kind=AMarkerType.CUE,
+                              index=1,
+                              locked=False),
+                      AMarker(name='dance',
+                              color=AMarkerColors.MAGENTA,
+                              start=183.252,
+                              end=None,
+                              kind=AMarkerType.CUE,
+                              index=2,
+                              locked=False),
+                      AMarker(name='bass line',
+                              color=AMarkerColors.DARK_BLUE,
+                              start=184.308,
+                              end=None,
+                              kind=AMarkerType.CUE,
+                              index=3,
+                              locked=False),
+                      AMarker(name='32',
+                              color=AMarkerColors.RED,
+                              start=235.514,
+                              end=None,
+                              kind=AMarkerType.CUE,
+                              index=4,
+                              locked=False),
+                      AMarker(name='',
+                              color=AMarkerColors.SKY_BLUE,
+                              start=184.308,
+                              end=192.842,
+                              kind=AMarkerType.LOOP,
+                              index=0,
+                              locked=True)]),
+    ])
+    def test_serato_get_markers(self, audio, expected):
+        result = get_markers(get_serato_markers_v2(audio))
+        assert result == expected
+
+
+    @pytest.mark.parametrize("audio, expected", [
+        (audio_mp3, ALoudness(autogain=-2.213, gain_db=0.0)),
+        (audio_m4a, ALoudness(autogain=7.519, gain_db=0.0)),
+        (audio_flac, ALoudness(autogain=8.121, gain_db=0.0)),
+    ])
+    def test_serato_loudness(self, audio, expected):
+        result = loudness(audio)
+        assert result == expected
+
+
+    @pytest.mark.parametrize("audio, expected", [
+        (audio_mp3, ADataSource(software=ASoftware.SERATO_DJ_PRO,
+                                version=[2, 1],
+                                encoder=AEncoder(text='Lavf57.83.100',
+                                                 settings='',
+                                                 mode=AEncoderMode.CBR))),
+        (audio_m4a, ADataSource(software=ASoftware.SERATO_DJ_PRO,
+                                version=[0, 1, 0],
+                                encoder=AEncoder(text='Lavf59.16.100',
+                                                 settings='',
+                                                 mode=AEncoderMode.UNKNOWN))),
+        (audio_flac, ADataSource(software=ASoftware.SERATO_DJ_PRO,
+                                 version=[0, 1, 0],
+                                 encoder=None)),
+    ])
+    def test_serato_data_source(self, audio, expected):
+        result = data_source(audio)
+        assert result == expected
