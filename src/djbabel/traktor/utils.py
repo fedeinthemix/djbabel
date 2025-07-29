@@ -101,7 +101,7 @@ def traktor_attr_name(s: str) -> str | None:
 #########################################################################
 
 def traktor_path(p: Path) -> str:
-    """Replaces path delimiter '/' by '/:', and remove Windows drive.
+    """Replaces path delimiter with '/:', and remove Windows drive.
     """
     if not p.is_absolute():
         fpath = p.resolve()

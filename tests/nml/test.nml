@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<NML VERSION="20">
+  <HEAD COMPANY="www.native-instruments.com" PROGRAM="Traktor Pro 4">
+  </HEAD>
+
+  <COLLECTION ENTRIES="2">
+    <ENTRY
+        MODIFIED_DATE="2025/7/7"
+        MODIFIED_TIME="72880"
+        AUDIO_ID="AQVru7u7y7u73bu7u7y7u83dzNzN3M3d/czdzN3M3ehFRFRURERFREU0RUVERY//////////////////2O////////////////////28yru5i5q7u712q6qovtzf7d7c7u/u3f697t7E3//////////////////+////////////////////////////////////////3M3M3sm7vN3N/a3c3bz//////+///////u///kj/////////////////////////////////////////////////////////3v7d3c3t3d393M3MzczN3ru7u7u7u73bu7u7y7vMsgAAAA=="
+        TITLE="Beautiful People (Extended)"
+        ARTIST="David Guetta, Sia">
+      <LOCATION DIR="/:Users/:myname/:Music/:David Guetta/:Beautiful People - Single/:" FILE="David_Guetta,_Sia_-_Beautiful_People_(Extended).mp3" VOLUME="C:" VOLUMEID="12345678">
+      </LOCATION>
+
+      <ALBUM TRACK="1" TITLE="Beautiful People (Extended)">
+      </ALBUM>
+
+      <MODIFICATION_INFO AUTHOR_TYPE="user">
+      </MODIFICATION_INFO>
+
+      <INFO
+          BITRATE="320000"
+          GENRE="Dance / Pop"
+          LABEL="Atlantic Records UK"
+          COVERARTID="123/1DWLHXAVLMJMBD5QTGFTCVDRBMYA"
+          KEY="1m"
+          PLAYCOUNT="26"
+          PLAYTIME="261"
+          PLAYTIME_FLOAT="260.858765"
+          IMPORT_DATE="2025/7/9"
+          LAST_PLAYED="2025/7/8"
+          RELEASE_DATE="2025/1/1"
+          FLAGS="76"
+          FILESIZE="11746">
+      </INFO>
+
+      <TEMPO BPM="126.999878" BPM_QUALITY="100.000000">
+      </TEMPO>
+
+      <LOUDNESS PEAK_DB="-0.721318" PERCEIVED_DB="0.000000" ANALYZED_DB="-0.860893">
+      </LOUDNESS>
+
+      <MUSICAL_KEY VALUE="21">
+      </MUSICAL_KEY>
+
+      <CUE_V2 NAME="AutoGrid" DISPL_ORDER="0" TYPE="4" START="52.261284" LEN="0.000000" REPEATS="-1" HOTCUE="-1">
+        <GRID BPM="126.999878">
+        </GRID>
+
+      </CUE_V2>
+
+      <CUE_V2 NAME="n.n." DISPL_ORDER="0" TYPE="0" START="52.261284" LEN="0.000000" REPEATS="-1" HOTCUE="0">
+      </CUE_V2>
+
+      <CUE_V2 NAME="n.n." DISPL_ORDER="0" TYPE="5" START="30288.510819" LEN="3779.531192" REPEATS="-1" HOTCUE="1">
+      </CUE_V2>
+
+    </ENTRY>
+
+    <ENTRY MODIFIED_DATE="2025/7/9" MODIFIED_TIME="54587" LOCK="1" LOCK_MODIFICATION_TIME="2025-07-09T15:13:07" AUDIO_ID="AVgCMzNUMzNTMzRTMzRDMzVDMzUzM0UzM0QiIRESISMzMzMzMzMzMzMzMzMzMzMyIzM0REREREREREQxAAARERERERERERERERIyIyMyIjIzMyMyE1ZlZVZVVWVVVVVUVWVWVVVVVVVVVWRFVmZmZURFZmZ3ZURUVEVUVEVEREVERDRERERFRERERVRUQ0RmVlVmVlZ2VVZVVmZndndlVVVVVVVUVVZVVWZVVWZmZlREVmZnZlRFREREREREVFREVENEVEVEVEREREVEQxJEVERFVFRFVURVVURVVERVVERVVUVVVUVFRFRERVZlZlZVZVREdkREdURFdURGcyIhAA==" TITLE="You Used To Salsa" ARTIST="Richie Rich's Salsa House">
+
+      <LOCATION DIR="/:Users/:myname/:Music/:Richie Rich's Salsa House/:" FILE="Richie_Rich's_Salsa_House-You_Used_To_Salsa.flac" VOLUME="C:" VOLUMEID="12345678">
+      </LOCATION>
+
+      <ALBUM TITLE="Maxi-Single">
+      </ALBUM>
+
+      <MODIFICATION_INFO AUTHOR_TYPE="user">
+      </MODIFICATION_INFO>
+
+      <INFO BITRATE="899625" KEY="F#" PLAYCOUNT="1" PLAYTIME="345" PLAYTIME_FLOAT="344.375153" IMPORT_DATE="2025/7/9" LAST_PLAYED="2025/7/9" RELEASE_DATE="1991/1/1" FLAGS="30" FILESIZE="37867">
+      </INFO>
+
+      <TEMPO BPM="122.429131" BPM_QUALITY="100.000000">
+      </TEMPO>
+
+      <LOUDNESS PEAK_DB="1.000449" PERCEIVED_DB="6.752044" ANALYZED_DB="6.752044">
+      </LOUDNESS>
+
+      <MUSICAL_KEY VALUE="6">
+      </MUSICAL_KEY>
+
+      <CUE_V2 NAME="AutoGrid" DISPL_ORDER="0" TYPE="4" START="685.498218" LEN="0.000000" REPEATS="-1" HOTCUE="-1">
+        <GRID BPM="122.429131">
+        </GRID>
+
+      </CUE_V2>
+
+      <CUE_V2 NAME="64" DISPL_ORDER="0" TYPE="3" START="685.751223" LEN="0.000000" REPEATS="-1" HOTCUE="0">
+      </CUE_V2>
+
+      <CUE_V2 NAME="Beat Marker" DISPL_ORDER="0" TYPE="4" START="16368.040636" LEN="0.000000" REPEATS="-1" HOTCUE="-1">
+        <GRID BPM="122.603836">
+        </GRID>
+
+      </CUE_V2>
+
+      <CUE_V2 NAME="Beat Marker" DISPL_ORDER="0" TYPE="4" START="32028.235376" LEN="0.000000" REPEATS="-1" HOTCUE="-1">
+        <GRID BPM="122.731712">
+        </GRID>
+
+      </CUE_V2>
+
+      <CUE_V2 NAME="Beat Marker" DISPL_ORDER="0" TYPE="4" START="80915.356209" LEN="0.000000" REPEATS="-1" HOTCUE="-1">
+        <GRID BPM="122.788513">
+        </GRID>
+
+      </CUE_V2>
+
+      <CUE_V2 NAME="n.n." DISPL_ORDER="0" TYPE="0" START="245100.092650" LEN="0.000000" REPEATS="-1" HOTCUE="1">
+      </CUE_V2>
+
+      <CUE_V2 NAME="Beat Marker" DISPL_ORDER="0" TYPE="4" START="274418.795586" LEN="0.000000" REPEATS="-1" HOTCUE="-1">
+        <GRID BPM="116.569626">
+        </GRID>
+
+      </CUE_V2>
+
+      <CUE_V2 NAME="Beat Marker" DISPL_ORDER="0" TYPE="4" START="276477.651013" LEN="0.000000" REPEATS="-1" HOTCUE="-1">
+        <GRID BPM="122.473396">
+        </GRID>
+
+      </CUE_V2>
+
+      <CUE_V2 NAME="n.n." DISPL_ORDER="0" TYPE="0" START="276477.651013" LEN="0.000000" REPEATS="-1" HOTCUE="2">
+      </CUE_V2>
+
+      <CUE_V2 NAME="Beat Marker" DISPL_ORDER="0" TYPE="4" START="327427.491732" LEN="0.000000" REPEATS="-1" HOTCUE="-1">
+        <GRID BPM="122.590958">
+        </GRID>
+
+      </CUE_V2>
+
+      <CUE_V2 NAME="Beat Marker" DISPL_ORDER="0" TYPE="4" START="335258.411653" LEN="0.000000" REPEATS="-1" HOTCUE="-1">
+        <GRID BPM="122.692467">
+        </GRID>
+
+      </CUE_V2>
+
+    </ENTRY>
+
+  </COLLECTION>
+
+  <SETS ENTRIES="0">
+  </SETS>
+
+  <PLAYLISTS>
+    <NODE TYPE="FOLDER" NAME="$ROOT">
+      <SUBNODES COUNT="1">
+        <NODE TYPE="PLAYLIST" NAME="test">
+          <PLAYLIST ENTRIES="2" TYPE="LIST" UUID="7296f91880c947ef94bb1b9cfd12cdca">
+            <ENTRY>
+              <PRIMARYKEY TYPE="TRACK" KEY="C:/:Users/:myname/:Music/:David Guetta/:Beautiful People - Single/:David_Guetta,_Sia_-_Beautiful_People_(Extended).mp3">
+              </PRIMARYKEY>
+
+            </ENTRY>
+
+            <ENTRY>
+              <PRIMARYKEY TYPE="TRACK" KEY="C:/:Users/:myname/:Music/:Richie Rich's Salsa House/:Richie_Rich's_Salsa_House-You_Used_To_Salsa.flac">
+              </PRIMARYKEY>
+
+            </ENTRY>
+
+          </PLAYLIST>
+
+        </NODE>
+
+      </SUBNODES>
+
+    </NODE>
+
+  </PLAYLISTS>
+
+  <INDEXING>
+  </INDEXING>
+
+</NML>

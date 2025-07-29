@@ -96,7 +96,7 @@ def get_location(entry: ET.Element) -> Path:
 
 
 def adjust_location(loc: Path, anchor: Path | None = None, relative: Path | None = None) -> Path:
-    loc_rel = loc.relative_to(relative) if relative is not None else loc
+    loc_rel = loc.relative_to(relative) if relative is not None else loc.relative_to(loc.anchor)
     return path_anchor(anchor) / loc_rel
 
 
