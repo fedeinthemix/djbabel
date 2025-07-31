@@ -1,27 +1,43 @@
-# -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2025 Federico Beffa <beffa@fbengineering.ch>
+# SPDX-FileCopyrightText: 2019 Jan Holthuis
+#
+# SPDX-License-Identifier: MIT
+
+from dataclasses import dataclass
 import struct
 import io
 from PIL import Image
 from PIL import ImageColor
-from mutagen._file import FileType
+from typing import Iterator
+from mutagen._file import FileType # pyright: ignore
 
-from .types import SeratoTags
+from .types import EntryBase, SeratoTags
 from .utils import get_serato_metadata, FMT_VERSION
 
-def get_serato_overview(audio: FileType) -> dict | None:
-    return get_serato_metadata(SeratoTags.OVERVIEW,
-                               parse,
-                               [SeratoTags.OVERVIEW.name.lower()],
-                               lambda x: [draw_waveform(x)])(audio)
+###############################################################################
+
+@dataclass
+class Overview(EntryBase):
+    img : Image.Image
+
+
+def get_serato_overview(audio: FileType) -> Overview | None:
+    ov = get_serato_metadata(SeratoTags.OVERVIEW, lambda x: draw_waveform(parse(x)))(audio)
+    if ov is None:
+        return None
+    else:
+        assert len(ov) == 1, f"Unexpected overview data {ov}"
+        assert isinstance(ov[0], Overview)
+        return ov[0]
 
 ###############################################################################
-# Code from https://github.com/Holzhaus/serato-tags with minor modifications.
+# Code below this line adapted from https://github.com/Holzhaus/serato-tags
 #
 # Copyright 2019 Jan Holthuis
 #
-# original code licensed under the MIT License
+# Original code licensed under the MIT License. See LICENSE/MIT.txt
 
-def parse(data: bytes):
+def parse(data: bytes) -> Iterator[bytearray]:
     fp = io.BytesIO(data)
     version = struct.unpack(FMT_VERSION, fp.read(2))
     assert version == (0x01, 0x05)
@@ -31,7 +47,7 @@ def parse(data: bytes):
         yield bytearray(x)
 
 
-def draw_waveform(data):
+def draw_waveform(data) -> list[EntryBase]:
     img = Image.new('RGB', (240, 16), "black")
     pixels = img.load()
 
@@ -48,6 +64,7 @@ def draw_waveform(data):
                 saturation=40,
                 luminance=(value / 0xFF) * 100,
             )
+            assert pixels is not None, "Enpty image"
             pixels[i, j] = ImageColor.getrgb(color)
 
-    return img
+    return [Overview(img)]

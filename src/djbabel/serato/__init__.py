@@ -281,14 +281,14 @@ def beatgrid(audio: FileType) -> list[ABeatGridBPM]:
 def get_markers(mkrs: list[EntryBase]) -> list[AMarker]:
     def from_serato(m: EntryBase) -> AMarker:
         match m:
-            case CueEntry(_, index, position, _, color, _, name): # pyright: ignore [reportGeneralTypeIssues]
+            case CueEntry(_, index, position, _, color, _, name):
                 color_rbg = parse_color(color)
                 return AMarker(name, closest_color_perceptual(color_rbg), ms_to_s(position), None, AMarkerType.CUE, index, False)
-            case LoopEntry(_, index, start, end, _, _, color, _, locked, name): # pyright: ignore [reportGeneralTypeIssues]
+            case LoopEntry(_, index, start, end, _, _, color, _, locked, name):
                 color_rbg = parse_color(color)
                 return AMarker(name, closest_color_perceptual(color_rbg), ms_to_s(start), ms_to_s(end), AMarkerType.LOOP, index, locked)
             # Flip not implemented. They are Serato specific.
-            # case djbabel.serato.markers2..FlipEntry():
+            # case djbabel.serato.markers2.FlipEntry():
             case _:
                 raise ValueError(f"Marker of unexpected type {m}")
 
@@ -299,7 +299,7 @@ def get_markers(mkrs: list[EntryBase]) -> list[AMarker]:
 def locked(mkrs: list[EntryBase]) -> bool:
     def from_serato(m: EntryBase) -> bool:
         match m:
-            case BpmLockEntry(enabled): # pyright: ignore [reportGeneralTypeIssues]
+            case BpmLockEntry(enabled):
                 return enabled
             case _:
                 return False
@@ -312,7 +312,7 @@ def locked(mkrs: list[EntryBase]) -> bool:
 def color(mkrs: list[EntryBase]) -> tuple[int, int, int] | None:
     def from_serato(m: EntryBase) -> tuple[int, int, int] | None:
         match m:
-            case ColorEntry(_, color): # pyright: ignore [reportGeneralTypeIssues]
+            case ColorEntry(_, color):
                 return parse_color(color)
             case _:
                 return None
@@ -322,15 +322,15 @@ def color(mkrs: list[EntryBase]) -> tuple[int, int, int] | None:
 
 def average_bpm(audio: FileType) -> float | None:
     at = get_serato_autotags(audio)
-    return at['bpm'] if at is not None else None
+    return at.bpm if at is not None else None
 
 def loudness(audio: FileType) -> ALoudness | None:
     at = get_serato_autotags(audio)
-    return ALoudness(at['autogain'], at['gaindb']) if isinstance(at, dict) else None
+    return ALoudness(at.autogain, at.gaindb) if at is not None else None
 
 def data_source(audio: FileType) -> ADataSource:
     an = get_serato_analysis(audio)
-    v = an if an is not None else []
+    v = an.version if an is not None else []
     enc = audio_endocer(audio)
     return ADataSource(ASoftware.SERATO_DJ_PRO, v, enc)
 

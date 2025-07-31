@@ -9,7 +9,7 @@ authors = [
 ]
 description = "DJ Software playlists convertion tool"
 # readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "basic-colormath",
     "mutagen",
@@ -20,7 +20,7 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
 ]
-keywords = ["DJ", "Serato", "Serato DJ Pro", "RekordBox"]
+keywords = ["DJ", "Serato", "Serato DJ Pro", "RekordBox", "Traktor Pro 4"]
 
 dynamic = ["version"]
 

@@ -34,7 +34,7 @@ from djbabel.serato.markers2 import CueEntry, get_serato_markers_v2, ColorEntry,
 from djbabel.serato.utils import audio_file_type, readbytes, serato_metadata
 from djbabel.serato.types import STag, SeratoTags, EntryBase
 from djbabel.serato.autotags import get_serato_autotags
-from djbabel.serato.overview import get_serato_overview
+from djbabel.serato.overview import get_serato_overview, draw_waveform
 from djbabel.serato.beatgrid import get_serato_beatgrid
 from djbabel.serato.markers import get_serato_markers
 from djbabel.serato.analysis import get_serato_analysis
@@ -80,9 +80,9 @@ ag_m4a = get_serato_autotags(audio_m4a)
 ov_mp3 = get_serato_overview(audio_mp3)
 ov_flac = get_serato_overview(audio_flac)
 ov_m4a = get_serato_overview(audio_m4a)
-img_mp3 = ov_mp3[SeratoTags.OVERVIEW.name.lower()].show()
-img_flac = ov_flac[SeratoTags.OVERVIEW.name.lower()].show()
-img_m4a = ov_m4a[SeratoTags.OVERVIEW.name.lower()].show()
+img_mp3 = ov_mp3.img.show()
+img_flac = ov_flac.img.show()
+img_m4a = ov_m4a.img.show()
 
 bg_mp3 = get_serato_beatgrid(audio_mp3)
 bg_flac = get_serato_beatgrid(audio_flac)

@@ -3,6 +3,8 @@ from pathlib import Path
 from enum import Enum, IntEnum, StrEnum, auto
 from dataclasses import dataclass, field
 
+###################################################################
+
 class AFormat(StrEnum):
     """Supported audio file formats.
     """

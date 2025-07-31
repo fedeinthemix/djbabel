@@ -1,7 +1,14 @@
+# SPDX-FileCopyrightText: 2025 Federico Beffa <beffa@fbengineering.ch>
+# SPDX-FileCopyrightText: 2019 Jan Holthuis
+#
+# SPDX-License-Identifier: MIT
+
 import struct
 import base64
+from dataclasses import dataclass, fields
 import io
-from mutagen._file import FileType
+from mutagen._file import FileType # pyright: ignore
+from typing import ClassVar
 
 from .types import SeratoTags, EntryBase
 from .utils import get_serato_metadata, FMT_VERSION, readbytes
@@ -11,20 +18,16 @@ def get_serato_markers_v2(audio: FileType) -> list[EntryBase]:
     return m if isinstance(m, list) else []
 
 ###############################################################################
-# Code from https://github.com/Holzhaus/serato-tags
+# Code below this line adapted from https://github.com/Holzhaus/serato-tags
 #
 # Copyright 2019 Jan Holthuis
 #
-# original code licensed under the MIT License
+# Original code licensed under the MIT License. See LICENSE/MIT.txt
 
-# class Entry(EntryBase):
-#     pass
-
-
+@dataclass
 class UnknownEntry(EntryBase):
-    NAME = None
-    FIELDS = ('data',)
-    __match_args__ = FIELDS
+    NAME : ClassVar[None] = None
+    data : bytes
 
     @classmethod
     def load(cls, data):
@@ -33,103 +36,121 @@ class UnknownEntry(EntryBase):
     def dump(self):
         return self.data
 
-
+@dataclass
 class BpmLockEntry(EntryBase):
-    NAME = 'BPMLOCK'
-    FIELDS = ('enabled',)
-    FMT = '?'
-    __match_args__ = FIELDS
+    NAME : ClassVar[str] = 'BPMLOCK'
+    FMT : ClassVar[str] = '?'
+    enabled : bool
 
     @classmethod
     def load(cls, data):
         return cls(*struct.unpack(cls.FMT, data))
 
     def dump(self):
-        return struct.pack(self.FMT, *(getattr(self, f) for f in self.FIELDS))
+        return struct.pack(self.FMT, *(getattr(self, f.name) for f in fields(self)))
 
 
+@dataclass
 class ColorEntry(EntryBase):
-    NAME = 'COLOR'
-    FMT = 'c3s'
-    FIELDS = ('field1', 'color',)
-    __match_args__ = FIELDS
+    NAME : ClassVar[str] = 'COLOR'
+    FMT : ClassVar[str] = 'c3s'
+    field1 : bytes
+    color : bytes
 
     @classmethod
     def load(cls, data):
         return cls(*struct.unpack(cls.FMT, data))
 
     def dump(self):
-        return struct.pack(self.FMT, *(getattr(self, f) for f in self.FIELDS))
+        return struct.pack(self.FMT, *(getattr(self, f.name) for f in fields(self)))
 
 
+@dataclass
 class CueEntry(EntryBase):
-    NAME = 'CUE'
-    FMT = '>cBIc3s2s'
-    FIELDS = ('field1', 'index', 'position', 'field4', 'color', 'field6',
-              'name',)
-    __match_args__ = FIELDS
+    NAME : ClassVar[str] = 'CUE'
+    FMT : ClassVar[str] = '>cBIc3s2s'
+    field1 : bytes
+    index : int
+    position : int
+    field4 : bytes
+    color : bytes
+    field6 : bytes
+    name : str
 
     @classmethod
     def load(cls, data):
         info_size = struct.calcsize(cls.FMT)
         info = struct.unpack(cls.FMT, data[:info_size])
+        assert len(info) == 6
         name, nullbyte, other = data[info_size:].partition(b'\x00')
         assert nullbyte == b'\x00'
         assert other == b''
         return cls(*info, name.decode('utf-8'))
 
     def dump(self):
-        struct_fields = self.FIELDS[:-1]
+        struct_fields = fields(self)[:-1]
         return b''.join((
-            struct.pack(self.FMT, *(getattr(self, f) for f in struct_fields)),
+            struct.pack(self.FMT, *(getattr(self, f.name) for f in struct_fields)),
             self.name.encode('utf-8'),
             b'\x00',
         ))
 
 
+@dataclass
 class LoopEntry(EntryBase):
-    NAME = 'LOOP'
-    # FMT = '>cBII4s4sB?'
-    # FIELDS = ('field1', 'index', 'startposition', 'endposition', 'field5',
-    #           'field6', 'color', 'locked', 'name',)
-    # corrected color parsing according to (no bit reordering)
-    # https://github.com/Holzhaus/triseratops/blob/e602f8eec94b5ea0cf91f318180aab5eedf4bfa2/src/tag/markers2.rs#L373
-    FMT = '>cBII4sc3sc?'
-    FIELDS = ('field1', 'index', 'startposition', 'endposition', 'field5',
-              'field6', 'color', 'field8', 'locked', 'name',)
-    __match_args__ = FIELDS
+    NAME : ClassVar[str] = 'LOOP'
+    FMT : ClassVar[str] = '>cBII4sc3sc?'
+    field1 : bytes
+    index : int
+    startposition : int
+    endposition : int
+    field5 : bytes
+    field6 : bytes
+    color  : bytes
+    field8 : bytes
+    locked : bool
+    name : str
+
 
     @classmethod
     def load(cls, data):
         info_size = struct.calcsize(cls.FMT)
         info = struct.unpack(cls.FMT, data[:info_size])
+        assert len(info) == 9
         name, nullbyte, other = data[info_size:].partition(b'\x00')
         assert nullbyte == b'\x00'
         assert other == b''
         return cls(*info, name.decode('utf-8'))
 
     def dump(self):
-        struct_fields = self.FIELDS[:-1]
+        struct_fields = fields(self)[:-1]
         return b''.join((
-            struct.pack(self.FMT, *(getattr(self, f) for f in struct_fields)),
+            struct.pack(self.FMT, *(getattr(self, f.name) for f in struct_fields)),
             self.name.encode('utf-8'),
             b'\x00',
         ))
 
 
+@dataclass
 class FlipEntry(EntryBase):
-    NAME = 'FLIP'
-    FMT1 = 'cB?'
-    FMT2 = '>BI'
-    FMT3 = '>BI16s'
-    FIELDS = ('field1', 'index', 'enabled', 'name', 'loop', 'num_actions',
-              'actions')
-    __match_args__ = FIELDS
+    NAME : ClassVar[str] = 'FLIP'
+    FMT1 : ClassVar[str] = 'cB?'
+    FMT2 : ClassVar[str] = '>BI'
+    FMT3 : ClassVar[str] = '>BI16s'
+    field1 : bytes
+    index : int
+    enabled : bool
+    name : str
+    loop : int
+    num_actions : int
+    actions : list
+
 
     @classmethod
     def load(cls, data):
         info1_size = struct.calcsize(cls.FMT1)
         info1 = struct.unpack(cls.FMT1, data[:info1_size])
+        assert len(info1) == 3
         name, nullbyte, other = data[info1_size:].partition(b'\x00')
         assert nullbyte == b'\x00'
 
@@ -163,7 +184,7 @@ def get_entry_type(entry_name):
             break
     return entry_type
 
-def parse(data):
+def parse(data: bytes) -> list[EntryBase]:
     versionlen = struct.calcsize(FMT_VERSION)
     version = struct.unpack(FMT_VERSION, data[:versionlen])
     assert version == (0x01, 0x01)
@@ -173,6 +194,7 @@ def parse(data):
     payload = base64.b64decode(b64data + padding)
     fp = io.BytesIO(payload)
     assert struct.unpack(FMT_VERSION, fp.read(2)) == (0x01, 0x01)
+    out = []
     while True:
         entry_name = b''.join(readbytes(fp)).decode('utf-8')
         if not entry_name:
@@ -181,4 +203,5 @@ def parse(data):
         assert entry_len > 0
 
         entry_type = get_entry_type(entry_name)
-        yield entry_type.load(fp.read(entry_len))
+        out += [entry_type.load(fp.read(entry_len))]
+    return out

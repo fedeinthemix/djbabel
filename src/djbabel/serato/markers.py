@@ -1,13 +1,19 @@
-# -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2025 Federico Beffa <beffa@fbengineering.ch>
+# SPDX-FileCopyrightText: 2019 Jan Holthuis
+#
+# SPDX-License-Identifier: MIT
+
+from dataclasses import dataclass, fields
 import io
 import struct
 import enum
-from mutagen._file import FileType
+from typing import ClassVar
+from mutagen._file import FileType # pyright: ignore
 
-from .types import SeratoTags
+from .types import EntryBase, SeratoTags
 from .utils import get_serato_metadata, FMT_VERSION
 
-def get_serato_markers(audio: FileType) -> dict | None:
+def get_serato_markers(audio: FileType) -> list[EntryBase] | None:
     return get_serato_metadata(SeratoTags.MARKERS, parse)(audio)
 
 # XXXX --- 'parse' fails on M4A files, needs special handling
@@ -23,11 +29,11 @@ def get_serato_markers(audio: FileType) -> dict | None:
 #
     
 ###############################################################################
-# Code from https://github.com/Holzhaus/serato-tags with minor modifications.
+# Code below this line adapted from https://github.com/Holzhaus/serato-tags
 #
 # Copyright 2019 Jan Holthuis
 #
-# original code licensed under the MIT License
+# Original code licensed under the MIT License. See LICENSE/MIT.txt
 
 class EntryType(enum.IntEnum):
     INVALID = 0
@@ -35,7 +41,7 @@ class EntryType(enum.IntEnum):
     LOOP = 3
 
 
-def serato32encode(data):
+def serato32encode(data: bytes) -> bytes:
     """Encode 3 byte plain text into 4 byte Serato binary format."""
     a, b, c = struct.unpack('BBB', data)
     z = c & 0x7F
@@ -45,7 +51,7 @@ def serato32encode(data):
     return bytes(bytearray([w, x, y, z]))
 
 
-def serato32decode(data):
+def serato32decode(data: bytes) -> bytes:
     """Decode 4 byte Serato binary format into 3 byte plain text."""
     w, x, y, z = struct.unpack('BBBB', data)
     c = (z & 0x7F) | ((y & 0x01) << 7)
@@ -54,21 +60,17 @@ def serato32decode(data):
     return struct.pack('BBB', a, b, c)
 
 
-class Entry(object):
-    FMT = '>B4sB4s6s4sBB'
-    FIELDS = ('start_position_set', 'start_position', 'end_position_set',
-              'end_position', 'field5', 'color', 'type', 'is_locked')
-
-    def __init__(self, *args):
-        assert len(args) == len(self.FIELDS)
-        for field, value in zip(self.FIELDS, args):
-            setattr(self, field, value)
-
-    def __repr__(self):
-        return '{name}({data})'.format(
-            name=self.__class__.__name__,
-            data=', '.join('{}={!r}'.format(name, getattr(self, name))
-                           for name in self.FIELDS))
+@dataclass
+class Entry(EntryBase):
+    FMT : ClassVar[str]= '>B4sB4s6s4sBB'
+    start_position_set : int
+    start_position : bytes
+    end_position_set : int
+    end_position : bytes
+    field5 : bytes
+    color : bytes
+    type : int
+    is_locked : int
 
     @classmethod
     def load(cls, data):
@@ -78,32 +80,30 @@ class Entry(object):
 
         start_position_set = None
         end_position_set = None
-        for field, value in zip(cls.FIELDS, info):
-            if field == 'start_position_set':
+        for field, value in zip(fields(cls), info):
+            if field.name == 'start_position_set':
                 assert value in (0x00, 0x7F)
                 value = value != 0x7F
                 start_position_set = value
-            elif field == 'end_position_set':
+            elif field.name == 'end_position_set':
                 assert value in (0x00, 0x7F)
                 value = value != 0x7F
                 end_position_set = value
-            elif field == 'start_position':
+            elif field.name == 'start_position':
                 assert start_position_set is not None
                 if start_position_set:
                     value = struct.unpack(
                         '>I', serato32decode(value).rjust(4, b'\x00'))[0]
                 else:
                     value = None
-            elif field == 'end_position':
+            elif field.name == 'end_position':
                 assert end_position_set is not None
                 if end_position_set:
                     value = struct.unpack(
                         '>I', serato32decode(value).rjust(4, b'\x00'))[0]
                 else:
                     value = None
-            elif field == 'color':
-                value = serato32decode(value)
-            elif field == 'type':
+            elif field.name == 'type':
                 value = EntryType(value)
             entry_data.append(value)
 
@@ -111,51 +111,75 @@ class Entry(object):
 
     def dump(self):
         entry_data = []
-        for field in self.FIELDS:
-            value = getattr(self, field)
-            if field == 'start_position_set':
+        for field in fields(self):
+            value = getattr(self, field.name)
+            if field.name == 'start_position_set':
                 value = 0x7F if not value else 0x00
-            elif field == 'end_position_set':
+            elif field.name == 'end_position_set':
                 value = 0x7F if not value else 0x00
-            elif field == 'color':
+            elif field.name == 'color':
                 value = serato32encode(value)
-            elif field == 'start_position':
+            elif field.name == 'start_position':
                 if value is None:
                     value = 0x7F7F7F7F
                 else:
                     value = serato32encode(struct.pack('>I', value)[1:])
-            elif field == 'end_position':
+            elif field.name == 'end_position':
                 if value is None:
                     value = 0x7F7F7F7F
                 else:
                     value = serato32encode(struct.pack('>I', value)[1:])
-            elif field == 'type':
+            elif field.name == 'type':
                 value = int(value)
             entry_data.append(value)
         return struct.pack(self.FMT, *entry_data)
 
 
-class Color(Entry):
-    FMT = '>4s'
-    FIELDS = ('color',)
+@dataclass
+class Color(EntryBase):
+    FMT : ClassVar[str] = '>4s'
+    color : bytes
+
+    @classmethod
+    def load(cls, data):
+        info_size = struct.calcsize(cls.FMT)
+        info = struct.unpack(cls.FMT, data[:info_size])
+        color_data = []
+
+        for field, value in zip(fields(cls), info):
+            if field.name == 'color':
+                value = serato32decode(value)
+            color_data.append(value)
+
+        return cls(*color_data)
+
+    def dump(self):
+        color_data = []
+        for field in fields(self):
+            value = getattr(self, field.name)
+            if field.name == 'color':
+                value = serato32encode(value)
+            color_data.append(value)
+        return struct.pack(self.FMT, *color_data)
 
 
-def parse(data: bytes):
+def parse(data: bytes) -> list[EntryBase]:
     fp = io.BytesIO(data)
     assert struct.unpack(FMT_VERSION, fp.read(2)) == (0x02, 0x05)
 
     num_entries = struct.unpack('>I', fp.read(4))[0]
-    for i in range(num_entries):
+    out = []
+    for _ in range(num_entries):
         entry_data = fp.read(0x16)
         assert len(entry_data) == 0x16
 
         entry = Entry.load(entry_data)
-        yield entry
+        out += [entry]
 
-    yield Color.load(fp.read())
+    return out  + [Color.load(fp.read())]
 
 
-def dump(new_entries):
+def dump(new_entries : list[Entry | Color]) -> bytes:
     data = struct.pack(FMT_VERSION, 0x02, 0x05)
     num_entries = len(new_entries) - 1
     data += struct.pack('>I', num_entries)

@@ -3,8 +3,9 @@ from mutagen.mp4 import MP4FreeForm
 from mutagen._file import FileType       # pyright: ignore
 from mutagen.id3 import GEOB, TXXX, RVA2 # pyright: ignore
 import struct
+from typing import Callable
 
-from djbabel.serato.types import EntryBase, SeratoTags
+from ..serato.types import EntryBase, SeratoTags
 from ..types import AFormat
 from ..utils import audio_file_type
 
@@ -89,14 +90,12 @@ def serato_metadata(audio: FileType, stag: SeratoTags) -> bytes | None:
     else:
         return data
 
-def get_serato_metadata(stag: SeratoTags, parser, keys: list[str] | None = None, f_out = list):
-    def get_metadata(audio: FileType) -> dict[str, EntryBase | float | int | str] | list[EntryBase] | None:
+def get_serato_metadata(stag: SeratoTags,
+                        parser: Callable[[bytes], list[EntryBase]]):
+    def get_metadata(audio: FileType) -> list[EntryBase] | None:
         data = serato_metadata(audio, stag)
         if data != None:
-            if keys == None:
-                return f_out(parser(data))
-            else:
-                return dict(zip(keys, f_out(parser(data))))
+            return parser(data)
         else:
             return None
 
