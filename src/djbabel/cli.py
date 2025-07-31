@@ -99,13 +99,13 @@ def main():
     The option '--relative' can be used to strip part of the leading
     path of the audio file paths in the playlist. For example, if you
     created a Serato Crate on Windows, then copied your 'Music' folder
-    to an external harddrive directory called 'backup' on drive 'D',
+    to an external harddrive directory called 'party' on drive 'D',
     you can access the files using
 
-    $ djbabel -r 'Users\\name' -a 'D:\\' playlist.crate
+    $ djbabel -r 'Users\\name' -a 'D:\\party' playlist.crate
 
-    Note however that the path sotred in the generated netlist is the
-    new one, not the original.
+    Note: The path sotred in the generated netlist is the new one, not
+    the original.
 
     """
     parser = argparse.ArgumentParser(description=desc)

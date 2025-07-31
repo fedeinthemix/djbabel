@@ -9,7 +9,7 @@ from djbabel.utils import to_float
 
 from djbabel.serato.markers2 import CueEntry, get_serato_markers_v2, ColorEntry, BpmLockEntry, LoopEntry
 
-from djbabel.serato import std_tag_text, track_number, release_date, location, audio_file_type, beatgrid, get_markers, locked, average_bpm, loudness, data_source, get_serato_markers_v2
+from djbabel.serato.read import std_tag_text, track_number, release_date, location, audio_file_type, beatgrid, get_markers, locked, average_bpm, loudness, data_source, get_serato_markers_v2
 
 ###############################################################
 # Read files

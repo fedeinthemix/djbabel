@@ -8,7 +8,7 @@ authors = [
   { name="Federico Beffa", email="beffa@fbengineering.ch" },
 ]
 description = "DJ Software playlists convertion tool"
-# readme = "README.md"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "basic-colormath",
