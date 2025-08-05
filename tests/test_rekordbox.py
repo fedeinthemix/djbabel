@@ -30,15 +30,9 @@ class TestRekordbox:
         assert result == expected
 
 
-    @pytest.mark.parametrize("r, expected", [
-        (0, '0'),
-        (1, '51'),
-        (2, '102'),
-        (3, '153'),
-        (4, '204'),
-        (5, '255'),
-    ])
-    def test_rb_attr_rating(self, r, expected):
+    @pytest.mark.parametrize("r", [0, 51, 102, 153, 204, 255,])
+    def test_rb_attr_rating(self, r):
+        expected = str(r)
         result = rb_attr_rating(r)
         assert result == expected
 
@@ -125,7 +119,6 @@ class TestRekordbox:
                                  'BitRate': '0',
                                  'SampleRate': '44100',
                                  'Comments': 'comments',
-                                 'PlayCount': '0',
                                  'Rating': '255',
                                  'Location': 'file://localhost/tmp/test.flac',
                                  'Remixer': 'remixer',

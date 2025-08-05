@@ -169,7 +169,7 @@ class ATrack:
     sample_rate: float | None # [Hz]
     comments: str | None
     play_count: int | None
-    rating: int | None # 0 to 5 stars
+    rating: int | None # 0 to 255, see Note (1)
     location: Path
     remixer: str | None
     tonality: str | None # Classic notation, e.g., 'Bbmaj'
@@ -183,6 +183,13 @@ class ATrack:
     trackID: int | None = None # RekordBox: trackID, Traktor: AUDIO_ID
     loudness: ALoudness | None = None
     # flags: AFlags | None = None
+
+# ATrack Notes:
+#
+# (1): Traktor and RekordBox have 0 to 5 stars. They both convert to the same int
+#      1 : "51", 2 : "102", 3 : "153", 4 : "204", 5 : "255"
+#      Serato doesn't have a rating feature.
+
 
 @dataclass
 class APlaylist:

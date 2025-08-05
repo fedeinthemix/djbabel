@@ -41,8 +41,7 @@ class TestTraktorWriteTags:
                                  'IMPORT_DATE': '2025/01/02',
                                  # 'BITRATE': '320', # we let Traktor calculate it
                                  'COMMENT': 'comments',
-                                 'PLAYCOUNT': '0',
-                                 'RATING': '5',
+                                 'RATING': '255',
                                  'REMIXER': 'remixer',
                                  # 'KEY': 'Bmaj', # now use MUSICAL_KEY tag
                                  'LABEL': 'label'}

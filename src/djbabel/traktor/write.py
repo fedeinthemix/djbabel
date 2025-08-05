@@ -99,10 +99,9 @@ def tag_attr(at: ATrack, f: Field) -> list[tuple[str,str]]:
     if n is None: # skip unused parameters
         return []
     elif f.name == 'size':
-        return [( n, str(round(v/1000)) if v is not None else "0")]
+        return [( n, str(round(v/1000)))] if v is not None else []
     elif f.name == 'total_time':
-        tt = v if v is not None else 0
-        return [( n, str(ceil(tt))), ('PLAYTIME_FLOAT', str(tt))]
+        return [( n, str(ceil(v))), ('PLAYTIME_FLOAT', str(v))] if v is not None else []
     elif f.name == 'locked':
         lt = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
         return [( n, str(int(v))), ('LOCK_MODIFICATION_TIME', lt)]
@@ -111,13 +110,13 @@ def tag_attr(at: ATrack, f: Field) -> list[tuple[str,str]]:
         # but mutagen doesn't provide the encoding mode.
         return []
     elif is_str_or_none(f.type):
-        return [( n, v if v is not None else "")]
+        return [( n, v)] if v is not None else []
     elif is_int_or_none(f.type):
-        return [( n, str(v) if v is not None else "0")]
+        return [( n, str(v))] if v is not None else []
     elif is_float_or_none(f.type):
-        return [( n, str(v) if v is not None else "0")]
+        return [( n, str(v))] if v is not None else []
     elif is_date_or_none(f.type):
-        return [( n, v.strftime('%Y/%m/%d') if v is not None else date.today().strftime('%Y/%m/%d'))]
+        return [( n, v.strftime('%Y/%m/%d'))] if v is not None else []
     else:
         return []
 

@@ -27,7 +27,7 @@ map_to_mp3_text_tag = {
     'disc_number': 'TPOS', # may be, e.g. "1/2"
     'remixer': 'TPE4',
     'comments' : 'COMM', # special handling for reading
-    'rating': 'POPM', # XXX field .rating!!
+    'rating': None, # 'POPM', but Serato doesn't have a rating feature.
     # 'play_count' : 'PCNT', # ID3 standard tag, use Serato one
     'tonality' : 'TKEY',
     # 'average_bpm' : 'TBPM', # this is rounded, use Serato data instead

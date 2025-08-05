@@ -26,7 +26,7 @@ def atrack_input_1():
         44100, # sample_rate
         'comments',
         None, # play_count
-        5, # rating
+        255, # rating
         Path('/tmp/test.flac'), # location
         'remixer',
         'Bmaj',

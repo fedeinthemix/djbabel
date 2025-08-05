@@ -49,16 +49,6 @@ REKORDBOX_FIELD_NAMES_MAP = {
     # 'loudness'
 }
 
-# Rekordbox mapping from number of start (in the GUI) to the decimal representation of a byte.
-REKORDBOX_RATING_MAP = {
-    0 : "0",
-    1 : "51",
-    2 : "102",
-    3 : "153",
-    4 : "204",
-    5 : "255",
-}
-
 # Map AMarkerType into the corresponding Rekordbox number
 REKORDBOX_MARKERTYPE_MAP = {
     AMarkerType.CUE : "0",
@@ -102,11 +92,11 @@ def rb_attr_tonality(t: str) -> str:
     else:
         return t
 
-def rb_attr_rating(r: int | None) -> str:
-    if isinstance(r, int) and r in REKORDBOX_RATING_MAP.keys():
-        return REKORDBOX_RATING_MAP[r]
+def rb_attr_rating(r: int) -> str:
+    if isinstance(r, int):
+        return str(r)
     else:
-        return REKORDBOX_RATING_MAP[0]
+        raise ValueError(f"rb_attr_rating: expected an int, got {r}")
 
 def rb_attr_color(c: tuple[int,int,int], source: ASoftware) -> str:
     # Rekordbox colors:
@@ -132,31 +122,31 @@ def rb_attr(at: ATrack, f: Field, tid: int):
     """
     v = getattr(at, f.name)
     if f.name == 'total_time':
-        return [( rb_attr_name(f.name), str(ceil(v)) if v is not None else "")]
+        return [( rb_attr_name(f.name), str(ceil(v)))] if v is not None else []
     elif f.name == 'bit_rate':
-        return [( rb_attr_name(f.name), str(round(v/1000)) if v is not None else "")]
+        return [( rb_attr_name(f.name), str(round(v/1000)))] if v is not None else []
     elif f.name == 'release_date':
-        return [( rb_attr_name(f.name), str(v.year) if v is not None else "")]
+        return [( rb_attr_name(f.name), str(v.year))] if v is not None else []
     elif f.name == 'location':
         return [( rb_attr_name(f.name), rb_attr_location(v))]
     elif f.name == 'aformat':
         return [( rb_attr_name(f.name), REKORDBOX_AFORMAT_MAP[v])]
     elif f.name == 'tonality':
-        return [( rb_attr_name(f.name), rb_attr_tonality(v))]
+        return [( rb_attr_name(f.name), rb_attr_tonality(v))] if v is not None else []
     elif f.name == 'color':
-        return [( rb_attr_name(f.name), rb_attr_color(v, at.data_source.software))]
+        return [( rb_attr_name(f.name), rb_attr_color(v, at.data_source.software))] if v is not None else []
     elif f.name == 'rating':
-        return [( rb_attr_name(f.name), rb_attr_rating(v))]
+        return [( rb_attr_name(f.name), rb_attr_rating(v))] if v is not None else []
     elif f.name == 'trackID':
         return [( rb_attr_name(f.name), str(tid) if v is None else str(v))]
     elif is_str_or_none(f.type):
-        return [( rb_attr_name(f.name), v if v is not None else "")]
+        return [( rb_attr_name(f.name), v)] if v is not None else []
     elif is_int_or_none(f.type):
-        return [( rb_attr_name(f.name), str(v) if v is not None else "0")]
+        return [( rb_attr_name(f.name), str(v))] if v is not None else []
     elif is_float_or_none(f.type):
-        return [( rb_attr_name(f.name), str(v) if v is not None else "0")]
+        return [( rb_attr_name(f.name), str(v))] if v is not None else []
     elif is_date_or_none(f.type):
-        return [( rb_attr_name(f.name), v.strftime('%Y-%m-%d') if v is not None else date.today().strftime('%Y-%m-%d'))]
+        return [( rb_attr_name(f.name), v.strftime('%Y-%m-%d'))] if v is not None else []
     else:
         return []
 

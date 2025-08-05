@@ -86,7 +86,9 @@ def parse_flac_m4a_tag_value(tags: dict[str, Any], tag: str) -> str | None:
 ###########################################################################
 # metadata from standard tags
 
-def std_tag_text(name: str, audio: FileType) -> str | None:
+def std_tag_text(name: str | None, audio: FileType) -> str | None:
+    if name is None:
+        return None
 
     tags = get_tags(audio)
     aformat = audio_file_type(audio)
@@ -128,7 +130,7 @@ def std_tag_text(name: str, audio: FileType) -> str | None:
                 return None
 
         case _:
-            return None
+            raise ValueError(f"std_tag_text: File type {aformat} is not supported")
 
 
 def std_comments_tag(audio: FileType) -> str | None:
@@ -289,7 +291,7 @@ def from_serato(audio: FileType) -> ATrack:
         tonality = std_tag_text('tonality', audio),
         label = std_tag_text('label', audio),
         comments = std_comments_tag(audio),
-        rating = to_int(std_tag_text('rating', audio)),
+        rating = None, # Serato doens't have a rating or star feature.
         size = file_size(audio),
         total_time = audio.info.length, # pyright: ignore
         bit_rate = bitrate(audio),
