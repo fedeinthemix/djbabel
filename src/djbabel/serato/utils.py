@@ -9,6 +9,87 @@ from ..serato.types import EntryBase, SeratoTags
 from ..types import AFormat
 from ..utils import audio_file_type
 
+###########################################################################
+
+# https://mutagen-specs.readthedocs.io/en/latest/id3/id3v2.4.0-frames.html
+map_to_mp3_text_tag = {
+    'title' : 'TIT2',
+    'artist' : 'TPE1',
+    'album' : 'TALB',
+    'grouping': 'TIT1',
+    'composer': 'TCOM',
+    'genre' : 'TCON',
+    # 'aformat' : 'TFLT', # use audio.mime
+    'year' : 'TDRC',
+    'release_date' : 'TDRL',
+    'label' : 'TPUB',
+    'track_number' : 'TRCK', # may be, e.g. "1/10"
+    'disc_number': 'TPOS', # may be, e.g. "1/2"
+    'remixer': 'TPE4',
+    'comments' : 'COMM', # special handling for reading
+    'rating': 'POPM', # XXX field .rating!!
+    # 'play_count' : 'PCNT', # ID3 standard tag, use Serato one
+    'tonality' : 'TKEY',
+    # 'average_bpm' : 'TBPM', # this is rounded, use Serato data instead
+    'play_count' : 'TXXX:SERATO_PLAYCOUNT',
+    # 'play_count' : 'PCNT', # ID3 standard tag
+}
+
+# there can multiple tags with the same key, e.g., for multiple authors
+# case INSENSITIVE
+# https://xiph.org/vorbis/doc/v-comment.html
+map_to_flac_text_tag = {
+    ## stadnard defined
+    'title' : 'title',
+    'artist' : 'artist',
+    'album' : 'album',
+    'grouping': 'grouping',
+    'mix' : 'version',
+    'composer': 'composer',
+    'genre' : 'genre',
+    'release_date' : 'date',
+    'label' : 'organization',
+    'track_number' : 'tracknumber', # may be, e.g. "1/10"
+    ## community defined
+    'disc_number': 'discnumber', # may be, e.g. "1/2"
+    'remixer': 'remixer',
+    'comments' : 'COMMENT',
+    'rating': 'rating', # XXX field .rating!!
+    ## other
+    'tonality' : 'initialkey',
+    # 'average_bpm' : 'BPM', # this is rounded, use Serato data instead
+    'play_count' : 'serato_playcount',
+    # 'play_count' : 'PLAY_COUNT', # use Serato one
+}
+
+map_to_mp4_tag = {
+    'title': '©nam',       # common name for title
+    'artist': '©ART',      # common name for artist
+    'album': '©alb',       # common name for album
+    'grouping': '©grp',     # common name for grouping
+    'composer': '©wrt',     # common name for composer (writer)
+    'genre': '©gen',       # common name for genre
+    'year': '©day',        # common name for year/creation date
+    'release_date': '©day', # often also uses ©day, or custom tag for more specific date
+    'label': '©lab',       # not a standard MP4 tag, often custom or using '©too' (encoder)
+    'track_number': 'trkn', # track number, often stores 'track/total' as a tuple
+    'disc_number': 'disk',  # disc number, often stores 'disc/total' as a tuple
+    'remixer': '©rem',     # not a standard MP4 tag, often custom or using '©too'
+    'rating': 'rtng',      # rating (e.g., 0-100)
+    # 'play_count': 'pcnt',   # play count (specific to Apple/iTunes)
+    'play_count': '----:com.serato.dj:playcount', # used by Serato
+    # 'tonality': '©key',    # not a standard MP4 tag, often custom (e.g., 'key')
+    'tonality' : '----:com.apple.iTunes:initialkey', # used by Serato
+    'comments': '©cmt',
+}
+
+map_to_aformat = {
+    AFormat.MP3 : map_to_mp3_text_tag,
+    AFormat.FLAC : map_to_flac_text_tag,
+    AFormat.M4A : map_to_mp4_tag,
+}
+
+
 ###################################################################
 
 def identity(x):
@@ -19,6 +100,14 @@ def is_list_of_one_str(data):
 
 def is_list_of_one_mp4freeform(data):
     return isinstance(data, list) and (len(data) == 1) and isinstance(data[0], MP4FreeForm)
+
+
+def get_tags(audio: FileType):
+    if audio.tags is not None:
+        tags = audio.tags
+    else:
+        tags = {}
+    return tags
 
 ###################################################################
 
@@ -106,12 +195,11 @@ def parse_color(data: bytes) -> tuple[int, int, int]:
     r, g, b = struct.unpack('BBB', data)
     return (r, g, b)
 
+def pack_color(color: tuple[int, int, int]) -> bytes:
+    data = struct.pack('BBB', *color)
+    return data
+
 ###############################################################################
-# Code from https://github.com/Holzhaus/serato-tags
-#
-# Copyright 2019 Jan Holthuis
-#
-# original code licensed under the MIT License
 
 FMT_VERSION = 'BB'
 

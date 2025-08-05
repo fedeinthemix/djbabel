@@ -254,7 +254,6 @@ def to_traktor(at: ATrack, trans: ATransformation) -> ET.Element:
     mkey = musical_key_tag(at, trans)
     for st in [loc, album, mod_info, info, tempo, ldness, mkey]:
         entry.append(st)
-    # new_at = adjust_time(at, trans)
     for m in reindex_sdjpro_loops(at.markers, trans):
         entry.append(cue_v2_markers(m))
     for m in at.beatgrid:

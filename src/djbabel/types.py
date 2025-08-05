@@ -72,7 +72,7 @@ class AMarkerColors(Enum):
     LIGHT_GREEN =  (0, 204, 68)
     TEAL =  (0, 204, 136)
     CYAN =  (0, 204, 204)
-    SKY_BLUE =  (0, 136, 204)
+    SKY_BLUE =  (39, 170, 225) # Serato Loop color. (Previous value (0, 136, 204))
     BLUE =  (0, 68, 204) # DARK_CYAN
     DARK_BLUE =  (0, 0, 204)
     # INDIGO =  (68, 0, 204)

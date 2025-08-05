@@ -11,7 +11,7 @@ from mutagen._file import FileType # pyright: ignore
 from .types import SeratoTags, EntryBase
 from .utils import get_serato_metadata, FMT_VERSION
 
-def get_serato_beatgrid(audio: FileType) -> list | None:
+def get_serato_beatgrid(audio: FileType) -> list[EntryBase] | None:
     return get_serato_metadata(SeratoTags.BEATGRID, parse)(audio)
 
 ###############################################################################

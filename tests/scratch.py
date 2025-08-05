@@ -16,7 +16,8 @@ import io
 
 # from typing import cast
 
-from mutagen.id3 import ID3, PRIV
+from mutagen.id3 import ID3, PRIV, COMM
+import mutagen.id3
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3
 import mutagen
@@ -31,7 +32,7 @@ import xml.etree.ElementTree as ET
 import djbabel.serato.markers2
 import djbabel.serato.beatgrid
 from djbabel.serato.markers2 import CueEntry, get_serato_markers_v2, ColorEntry, BpmLockEntry
-from djbabel.serato.utils import audio_file_type, readbytes, serato_metadata
+from djbabel.serato.utils import audio_file_type, readbytes, serato_metadata, maybe_metadata, FMT_VERSION, readbytes
 from djbabel.serato.types import STag, SeratoTags, EntryBase
 from djbabel.serato.autotags import get_serato_autotags
 from djbabel.serato.overview import get_serato_overview, draw_waveform
@@ -194,6 +195,173 @@ trans = ATransformation(parse_input_format('sdjpro'),
 apl = APlaylist("party", [a1, a_flac, a_m4a, a4, a5])
 # apl = APlaylist("party", [a1, a_flac, a_m4a])
 to_rekordbox_playlist(apl, Path("pl_rekordbox.xml"), trans)
+
+##########################################################
+# Write Serato DJ Pro
+
+from djbabel.serato.write import dump_serato_analysis, dump_serato_autotags, dump_serato_beatgrid, format_mp3_std_tag, to_serato_analysis, to_serato_autotags, to_serato_beatgrid, to_serato_markers_v2, dump_serato_markers, add_envelope, insert_newlines, remove_b64padding
+import djbabel.serato.markers2 as markers2
+from djbabel.utils import closest_color_perceptual
+
+def compare_bytes(reference, data):
+    if len(reference) != len(data):
+        return False
+    else:
+        for i, e in enumerate(data):
+            if e != reference[i]:
+                print(f"element {i} differs: ref = {bytes([reference[i]])}, data = {bytes([e])}")
+                return False
+        return True
+
+def serato_b64decode(data):
+    b64data = data.replace(b'\n', b'')
+    padding = b'A==' if len(b64data) % 4 == 1 else (b'=' * (-len(b64data) % 4))
+    return base64.b64decode(b64data + padding)
+
+# ty = audio_file_type(audio_mp3)
+# tag_name = serato_tag_name(SeratoTags.MARKERS2, ty)
+# m2_raw = maybe_metadata(audio_mp3, tag_name)
+
+# this already strips 'envelope' from M4A and FLAC
+m2_raw = serato_metadata(audio_mp3, SeratoTags.MARKERS2)
+m2_low = get_serato_markers_v2(audio_mp3)
+
+a1 = from_serato(audio_mp3)
+ce2_mp3 = to_serato_markers_v2(a1)
+ce2_bytes = dump_serato_markers(ce2_mp3)
+compare_bytes(m2_raw, ce2_bytes)
+
+# closest_color_perceptual(list(b"'\xaa\xe1"))
+
+an_raw = serato_metadata(audio_mp3, SeratoTags.ANALYSIS)
+an_bytes = dump_serato_analysis(to_serato_analysis(a1))
+compare_bytes(an_raw, an_bytes)
+
+ag_raw = serato_metadata(audio_mp3, SeratoTags.AUTOTAGS)
+ag_bytes = dump_serato_autotags(to_serato_autotags(a1))
+compare_bytes(ag_raw, ag_bytes)
+
+bg_mp3 = get_serato_beatgrid(audio_mp3)
+bg_raw = serato_metadata(audio_mp3, SeratoTags.BEATGRID)
+bg_serato = to_serato_beatgrid(a1)
+bg_bytes = dump_serato_beatgrid(bg_serato)
+# May fail due to the random Footer byte
+compare_bytes(bg_raw, bg_bytes)
+
+#### FLAC files
+at_flac = from_serato(audio_flac)
+ty_flac = audio_file_type(audio_flac)
+
+m2_raw_flac = maybe_metadata(audio_flac, serato_tag_name(SeratoTags.MARKERS2, ty_flac))
+m2_bytes_flac = dump_serato_markers(to_serato_markers_v2(at_flac))
+m2_bytes_flac_env = add_envelope(m2_bytes_flac, SeratoTags.MARKERS2, 515)
+compare_bytes(m2_raw_flac, m2_bytes_flac_env)
+
+bg_raw_flac = maybe_metadata(audio_flac, serato_tag_name(SeratoTags.BEATGRID, ty_flac))
+bg_orig_flac = get_serato_beatgrid(audio_flac)
+
+bg_flac = to_serato_beatgrid(at_flac)
+bg_bytes_flac = dump_serato_beatgrid(bg_flac)
+bg_bytes_flac_env = add_envelope(bg_bytes_flac, SeratoTags.BEATGRID)
+# The footer bit appears to be random
+# May fail due to the random Footer byte
+compare_bytes(bg_raw_flac, bg_bytes_flac_env)
+
+# Analysis
+an_raw_flac = maybe_metadata(audio_flac, serato_tag_name(SeratoTags.ANALYSIS, ty_flac))
+an_raw_payload_flac = serato_metadata(audio_flac, SeratoTags.ANALYSIS)
+an_bytes_flac = dump_serato_analysis(to_serato_analysis(at_flac))
+an_bytes_flac_env = add_envelope(an_bytes_flac, SeratoTags.ANALYSIS)
+compare_bytes(an_raw_payload_flac, an_bytes_flac)
+compare_bytes(an_raw_flac, an_bytes_flac_env)
+
+# Autotags
+ag_raw_flac = maybe_metadata(audio_flac, serato_tag_name(SeratoTags.AUTOTAGS, ty_flac))
+ag_raw_payload_flac = serato_metadata(audio_flac, SeratoTags.AUTOTAGS)
+ag_bytes_flac = dump_serato_autotags(to_serato_autotags(at_flac))
+ag_bytes_flac_env = add_envelope(ag_bytes_flac, SeratoTags.AUTOTAGS)
+compare_bytes(ag_raw_payload_flac, ag_bytes_flac)
+compare_bytes(ag_raw_flac, ag_bytes_flac_env)
+
+#### M4A files
+
+# markers2
+
+at_m4a = from_serato(audio_m4a)
+ty_m4a = audio_file_type(audio_m4a)
+
+m2_raw_m4a = maybe_metadata(audio_m4a, serato_tag_name(SeratoTags.MARKERS2, ty_m4a))
+m2_bytes_m4a = dump_serato_markers(to_serato_markers_v2(at_m4a))
+m2_bytes_m4a_env = add_envelope(m2_bytes_m4a, SeratoTags.MARKERS2, 515)
+compare_bytes(m2_raw_m4a, m2_bytes_m4a_env)
+
+# Beatgrid
+
+bg_raw_m4a = maybe_metadata(audio_m4a, serato_tag_name(SeratoTags.BEATGRID, ty_m4a))
+bg_orig_m4a = get_serato_beatgrid(audio_m4a)
+
+bg_m4a = to_serato_beatgrid(at_m4a)
+bg_bytes_m4a = dump_serato_beatgrid(bg_m4a)
+bg_bytes_m4a_env = add_envelope(bg_bytes_m4a, SeratoTags.BEATGRID)
+# The footer bit appears to be random
+# May fail due to the random Footer byte
+compare_bytes(bg_raw_m4a, bg_bytes_m4a_env)
+
+# Analysis
+an_raw_m4a = maybe_metadata(audio_m4a, serato_tag_name(SeratoTags.ANALYSIS, ty_m4a))
+an_raw_payload_m4a = serato_metadata(audio_m4a, SeratoTags.ANALYSIS)
+an_bytes_m4a = dump_serato_analysis(to_serato_analysis(at_m4a))
+an_bytes_m4a_env = add_envelope(an_bytes_m4a, SeratoTags.ANALYSIS)
+compare_bytes(an_raw_payload_m4a, an_bytes_m4a)
+compare_bytes(an_raw_m4a, an_bytes_m4a_env)
+
+# Autotags
+ag_raw_m4a = maybe_metadata(audio_m4a, serato_tag_name(SeratoTags.AUTOTAGS, ty_m4a))
+ag_raw_payload_m4a = serato_metadata(audio_m4a, SeratoTags.AUTOTAGS)
+ag_bytes_m4a = dump_serato_autotags(to_serato_autotags(at_m4a))
+ag_bytes_m4a_env = add_envelope(ag_bytes_m4a, SeratoTags.AUTOTAGS)
+compare_bytes(ag_raw_payload_m4a, ag_bytes_m4a)
+compare_bytes(ag_raw_m4a, ag_bytes_m4a_env)
+
+######################
+
+match 1:
+    case int(v):
+        print("int")
+    case _:
+        print("unknown")
+
+
+
+#####################
+#
+
+from djbabel.serato.write import to_serato, add_serato_tag, format_std_tags, format_mp3_std_tag
+from djbabel.serato.read import map_to_aformat
+
+trans = ATransformation(ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,2,4)),
+                        ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,2,4)))
+
+# a_test = a1
+# a_test_path = Path('audio') / 'test_audio_1.mp3'
+# a_test = at_flac
+# a_test_path = Path('audio') / 'test_audio_1.flac'
+a_test = at_m4a
+a_test_path = Path('audio') / 'test_audio_1.m4a'
+a_test.location = a_test_path
+a_test.title = 'test title'
+
+audio_test = mutagen.File(a_test_path)
+audio_test.delete()
+audio_test.save()
+audio_test = mutagen.File(a_test_path)
+
+to_serato(a_test, trans)
+audio_test = mutagen.File(a_test_path)
+
+for tag in audio_test.tags.keys():
+    v = audio_test[tag]
+    print(f"tag: {tag}, value {v}")
 
 ##########################################################
 # BeatGrid Shift

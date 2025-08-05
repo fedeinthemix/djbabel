@@ -6,7 +6,7 @@ from .markers2 import get_serato_markers_v2, CueEntry, BpmLockEntry, LoopEntry, 
 from .types import EntryBase
 # from djbabel.serato.overview import get_serato_overview
 from ..types import ATrack, AMarkerType, AMarker, ABeatGridBPM, ADataSource, ALoudness, ASoftware, AFormat, APlaylist
-from .utils import audio_file_type, parse_color, identity
+from .utils import audio_file_type, parse_color, map_to_aformat, map_to_mp4_tag, get_tags
 from ..utils import path_anchor, get_leading_base64_part, closest_color_perceptual, ms_to_s, audio_endocer, to_int
 from .crate import take_fields, get_track_paths
 
@@ -21,87 +21,6 @@ import os
 from pathlib import Path
 from typing import TypeVar, Any
 import warnings
-
-###########################################################################
-
-# https://mutagen-specs.readthedocs.io/en/latest/id3/id3v2.4.0-frames.html
-map_to_mp3_text_tag = {
-    'title' : 'TIT2',
-    'artist' : 'TPE1',
-    'album' : 'TALB',
-    'grouping': 'TIT1',
-    'composer': 'TCOM',
-    'genre' : 'TCON',
-    # 'aformat' : 'TFLT', # use audio.mime
-    'year' : 'TDRC',
-    'release_date' : 'TDRL',
-    'label' : 'TPUB',
-    'track_number' : 'TRCK', # may be, e.g. "1/10"
-    'disc_number': 'TPOS', # may be, e.g. "1/2"
-    'remixer': 'TPE4',
-    # 'comments' : 'COMM', # special handling
-    'rating': 'POPM', # XXX field .rating!!
-    'play_count' : 'TXXX:SERATO_PLAYCOUNT',
-    # 'play_count' : 'PCNT', # ID3 standard tag, use Serato one
-    'tonality' : 'TKEY',
-    # 'average_bpm' : 'TBPM', # this is rounded, use Serato data instead
-    'play_count' : 'TXXX:SERATO_PLAYCOUNT',
-    # 'play_count' : 'PCNT', # ID3 standard tag
-}
-
-# there can multiple tags with the same key, e.g., for multiple authors
-# case INSENSITIVE
-# https://xiph.org/vorbis/doc/v-comment.html
-map_to_flac_text_tag = {
-    ## stadnard defined
-    'title' : 'title',
-    'artist' : 'artist',
-    'album' : 'album',
-    'grouping': 'grouping',
-    'mix' : 'version',
-    'composer': 'composer',
-    'genre' : 'genre',
-    'release_date' : 'date',
-    'label' : 'organization',
-    'track_number' : 'tracknumber', # may be, e.g. "1/10"
-    ## community defined
-    'disc_number': 'discnumber', # may be, e.g. "1/2"
-    'remixer': 'remixer',
-    # 'comments' : 'COMMENT', # special handling
-    'rating': 'rating', # XXX field .rating!!
-    ## other
-    'tonality' : 'initialkey',
-    # 'average_bpm' : 'BPM', # this is rounded, use Serato data instead
-    'play_count' : 'serato_playcount',
-    # 'play_count' : 'PLAY_COUNT', # use Serato one
-}
-
-map_to_mp4_tag = {
-    'title': '©nam',       # common name for title
-    'artist': '©ART',      # common name for artist
-    'album': '©alb',       # common name for album
-    'grouping': '©grp',     # common name for grouping
-    'composer': '©wrt',     # common name for composer (writer)
-    'genre': '©gen',       # common name for genre
-    'year': '©day',        # common name for year/creation date
-    'release_date': '©day', # often also uses ©day, or custom tag for more specific date
-    'label': '©lab',       # not a standard MP4 tag, often custom or using '©too' (encoder)
-    'track_number': 'trkn', # track number, often stores 'track/total' as a tuple
-    'disc_number': 'disk',  # disc number, often stores 'disc/total' as a tuple
-    'remixer': '©rem',     # not a standard MP4 tag, often custom or using '©too'
-    'rating': 'rtng',      # rating (e.g., 0-100)
-    # 'play_count': 'pcnt',   # play count (specific to Apple/iTunes)
-    'play_count': '----:com.serato.dj:playcount', # used by Serato
-    # 'tonality': '©key',    # not a standard MP4 tag, often custom (e.g., 'key')
-    'tonality' : '----:com.apple.iTunes:initialkey', # used by Serato
-    # 'comments': '©cmt',   # comments
-}
-
-map_to_aformat = {
-    AFormat.MP3 : map_to_mp3_text_tag,
-    AFormat.FLAC : map_to_flac_text_tag,
-    AFormat.M4A : map_to_mp4_tag,
-}
 
 ###########################################################################
 # Helpers
@@ -167,14 +86,7 @@ def parse_flac_m4a_tag_value(tags: dict[str, Any], tag: str) -> str | None:
 ###########################################################################
 # metadata from standard tags
 
-def get_tags(audio: FileType):
-    if audio.tags is not None:
-        tags = audio.tags
-    else:
-        tags = {}
-    return tags
-
-def std_tag_text(name: str, audio: FileType, f_out: Callable[[str | None],Any] = identity):
+def std_tag_text(name: str, audio: FileType) -> str | None:
 
     tags = get_tags(audio)
     aformat = audio_file_type(audio)
@@ -185,7 +97,7 @@ def std_tag_text(name: str, audio: FileType, f_out: Callable[[str | None],Any] =
             if name in tag_map.keys():
                 tag = tag_map[name]
                 # .text field in not of type str
-                return f_out(str(head(tags[tag].text))) if tag in tags.keys() else None
+                return str(head(tags[tag].text)) if tag in tags.keys() else None
             else:
                 return None
 
@@ -195,7 +107,8 @@ def std_tag_text(name: str, audio: FileType, f_out: Callable[[str | None],Any] =
                 tag = tag_map[name]
                 tag_keys = tags.keys()
                 if tag.lower() in tag_keys:
-                    return f_out(parse_flac_m4a_tag_value(tags, tag))
+                    v = parse_flac_m4a_tag_value(tags, tag)
+                    return v if v is not None and v != '' else None
                 else:
                     return None
             else:
@@ -207,7 +120,8 @@ def std_tag_text(name: str, audio: FileType, f_out: Callable[[str | None],Any] =
                 tag = tag_map[name]
                 tag_keys = tags.keys()
                 if tag in tag_keys:
-                    return f_out(parse_flac_m4a_tag_value(tags, tag))
+                    v = parse_flac_m4a_tag_value(tags, tag)
+                    return v if v is not None and v != '' else None
                 else:
                     return None
             else:
@@ -226,6 +140,8 @@ def std_comments_tag(audio: FileType) -> str | None:
             return tags[tag].text[0] if tag is not None else None
         case AFormat.FLAC:
             return std_tag_text('comments', audio)
+        case AFormat.M4A:
+            return std_tag_text('©cmt', audio)
         case _:
             return None
 
@@ -369,11 +285,11 @@ def from_serato(audio: FileType) -> ATrack:
         track_number = track_number(std_tag_text('track_number', audio)),
         disc_number = track_number(std_tag_text('disc_number', audio)),
         release_date = release_date(audio),
-        play_count = std_tag_text('play_count', audio, to_int),
+        play_count = to_int(std_tag_text('play_count', audio)),
         tonality = std_tag_text('tonality', audio),
         label = std_tag_text('label', audio),
         comments = std_comments_tag(audio),
-        rating = std_tag_text('rating', audio, to_int),
+        rating = to_int(std_tag_text('rating', audio)),
         size = file_size(audio),
         total_time = audio.info.length, # pyright: ignore
         bit_rate = bitrate(audio),

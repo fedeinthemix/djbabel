@@ -9,7 +9,10 @@ from djbabel.utils import to_float
 
 from djbabel.serato.markers2 import CueEntry, get_serato_markers_v2, ColorEntry, BpmLockEntry, LoopEntry
 
-from djbabel.serato.read import std_tag_text, track_number, release_date, location, audio_file_type, beatgrid, get_markers, locked, average_bpm, loudness, data_source, get_serato_markers_v2
+from djbabel.serato.utils import serato_metadata, maybe_metadata, serato_tag_name
+from djbabel.serato.types import SeratoTags
+from djbabel.serato.read import std_tag_text, track_number, release_date, location, audio_file_type, beatgrid, get_markers, locked, average_bpm, loudness, data_source, get_serato_markers_v2, from_serato
+from djbabel.serato.write import to_serato_analysis, to_serato_autotags, to_serato_beatgrid, to_serato_markers_v2, dump_serato_analysis, dump_serato_autotags, dump_serato_beatgrid, dump_serato_markers, add_envelope
 
 ###############################################################
 # Read files
@@ -305,14 +308,70 @@ class TestSeratoReadTags:
                                                  settings='',
                                                  mode=AEncoderMode.CBR))),
         (audio_m4a, ADataSource(software=ASoftware.SERATO_DJ_PRO,
-                                version=[0, 1, 0],
+                                version=[0, 1],
                                 encoder=AEncoder(text='Lavf59.16.100',
                                                  settings='',
                                                  mode=AEncoderMode.UNKNOWN))),
         (audio_flac, ADataSource(software=ASoftware.SERATO_DJ_PRO,
-                                 version=[0, 1, 0],
+                                 version=[0, 1],
                                  encoder=None)),
     ])
     def test_serato_data_source(self, audio, expected):
         result = data_source(audio)
+        assert result == expected
+
+###############################################################
+# Write files
+
+class TestSeratoWriteTags:
+
+    trans = ATransformation(ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,2,4)),
+                            ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,2,4)))
+
+    file_mp3 = Path("tests") / "audio" / "The_Todd_Terry_Project_-_Weekend.mp3"
+    file_flac = Path("tests") / "audio" / "MARRS-Pump_up_the_volume.flac"
+    file_m4a = Path("tests") / "audio" / "blow-go.m4a"
+
+    audio_mp3 = mutagen.File(file_mp3, easy=False)
+    audio_flac = mutagen.File(file_flac, easy=False)
+    audio_m4a = mutagen.File(file_m4a, easy=False)
+
+    @pytest.mark.parametrize("audio, stag, fn", [
+        #### analysis ####
+        (audio_mp3, SeratoTags.ANALYSIS,
+         lambda x, s: dump_serato_analysis(to_serato_analysis(x))),
+        (audio_m4a, SeratoTags.ANALYSIS,
+         lambda x, s: add_envelope(dump_serato_analysis(to_serato_analysis(x)), s)),
+        (audio_flac, SeratoTags.ANALYSIS,
+         lambda x, s: add_envelope(dump_serato_analysis(to_serato_analysis(x)), s)),
+        #### autotags ####
+        (audio_mp3, SeratoTags.AUTOTAGS,
+         lambda x, s: dump_serato_autotags(to_serato_autotags(x))),
+        (audio_m4a, SeratoTags.AUTOTAGS,
+         lambda x, s: add_envelope(dump_serato_autotags(to_serato_autotags(x)), s)),
+        (audio_flac, SeratoTags.AUTOTAGS,
+         lambda x, s: add_envelope(dump_serato_autotags(to_serato_autotags(x)), s)),
+        #### beatgrids ####
+        ## Footnote seems random, but we set it to 0.
+        ## Hence we can only test files with a Footer value of '.
+        # (audio_mp3, SeratoTags.BEATGRID,
+        #  lambda x, s: dump_serato_beatgrid(to_serato_beatgrid(x))),
+        # (audio_m4a, SeratoTags.BEATGRID,
+        #  lambda x, s: add_envelope(dump_serato_beatgrid(to_serato_beatgrid(x)), s)),
+        (audio_flac, SeratoTags.BEATGRID,
+         lambda x, s: add_envelope(dump_serato_beatgrid(to_serato_beatgrid(x)), s)),
+        #### markers2 ####
+        (audio_mp3, SeratoTags.MARKERS2,
+         lambda x, s: dump_serato_markers(to_serato_markers_v2(x))),
+        (audio_m4a, SeratoTags.MARKERS2,
+         lambda x, s: add_envelope(dump_serato_markers(to_serato_markers_v2(x)), s, 515)),
+        (audio_flac, SeratoTags.MARKERS2,
+         lambda x, s: add_envelope(dump_serato_markers(to_serato_markers_v2(x)), s, 515)),
+
+    ])
+    def test_serato_analysis(self, audio, stag, fn):
+        at = from_serato(audio)
+        ty = audio_file_type(audio)
+        expected = maybe_metadata(audio, serato_tag_name(stag, ty))
+        result = fn(at, stag)
         assert result == expected

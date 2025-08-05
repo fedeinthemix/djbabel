@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 from dataclasses import dataclass
-from mutagen._file import FileType
+from mutagen._file import FileType # pyright: ignore
 
 from .types import EntryBase, SeratoTags
-from .utils import get_serato_metadata, identity
+from .utils import get_serato_metadata
 
 @dataclass
 class RelVol(EntryBase):
