@@ -213,6 +213,5 @@ def write_fields(fp: BinaryIO, data: list[CEntry]) -> int:
     """
     b = 0 # number of bytes written
     for d in data:
-        print(f"write_fields: d {d}")
         b += write_field(fp, d)
     return b

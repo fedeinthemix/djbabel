@@ -6,7 +6,6 @@ from mutagen import MutagenError # pyright: ignore
 from pathlib import Path
 import warnings
 
-from .utils import ask_yes_no
 from .types import ASoftwareInfo, APlaylist, ASoftware, ATransformation
 from .serato import read_serato_playlist, to_serato_playlist
 from .rekordbox import to_rekordbox_playlist
@@ -61,14 +60,14 @@ def get_playlist(filepath: Path, trans: ATransformation, anchor: Path | None, re
             raise ValueError(f'Source format {trans.source} not supported.')
 
 
-def create_playlist(playlist: APlaylist, filepath: Path, trans: ATransformation) -> None:
+def create_playlist(playlist: APlaylist, filepath: Path, trans: ATransformation, overwrite_tags: str) -> None:
     match trans.target:
         case ASoftwareInfo(ASoftware.REKORDBOX, _):
             return to_rekordbox_playlist(playlist, filepath, trans)
         case ASoftwareInfo(ASoftware.TRAKTOR, _):
             return to_traktor_playlist(playlist, filepath, trans)
         case ASoftwareInfo(ASoftware.SERATO_DJ_PRO, _):
-            return to_serato_playlist(playlist, filepath, trans)
+            return to_serato_playlist(playlist, filepath, trans, overwrite_tags)
         case _:
             raise ValueError(f'Target format {trans.target} not supported.')
 
@@ -129,9 +128,11 @@ def main():
                         help='anchor for tracks in a playlist')
     parser.add_argument('-r', '--relative', type=Path,
                         help='make track paths in a playlist relative to this argument')
+    parser.add_argument('-w', '--overwrite-tags',
+                        action='store_const', const='Y', default='n',
+                        help="Overwrite the audio file metadata tags. Use with 'Serato DJ Pro' as target ('sdjpro'))")
 
     args = parser.parse_args()
-    # print(args)
 
     try:
         trans = ATransformation(source = parse_input_format(args.source),
@@ -140,7 +141,7 @@ def main():
         ofile = output_filename(args.ofile, args.ifile, trans)
 
         playlist = get_playlist(ifile, trans, args.anchor, args.relative)
-        create_playlist(playlist, ofile, trans)
+        create_playlist(playlist, ofile, trans, args.overwrite_tags)
     except ValueError as err:
         print(f'{err}')
     except MutagenError as err:

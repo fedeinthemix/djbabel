@@ -336,8 +336,6 @@ def format_std_tags(field_name: str, tag: str, value, aformat: AFormat) -> Frame
 
 def add_std_tags(at: ATrack, audio: FileType, overwrite: str) -> tuple[FileType, str]:
     tags = get_tags(audio)
-    # aformat = audio_file_type(audio)
-    # tag_map = map_to_aformat[aformat]
     tag_map = map_to_aformat[at.aformat]
 
     for field_name in ['title', 'artist', 'grouping', 'remixer', 'composer', 'album', 'genre', 'track_number', 'disc_number', 'tonality', 'label', 'release_date', 'comments' ]:
@@ -397,20 +395,30 @@ def add_serato_tag(at, audio, overwrite, stag, to_low, dump):
 #########################################################################
 #### Main ####
 
-def to_serato(at: ATrack, trans: ATransformation) -> None:
+def to_serato(at: ATrack, trans: ATransformation, overwrite: str = 'n') -> str:
+    """Convert an ATrack instance into 'Serato DJ Pro' metadata.
+
+    The metadta is written to the tags expected by Serato in the audio
+    file specified by the 'location' attribute of the ATrack instance.
+
+    Args:
+      at: The ATrack instance.
+      trans: ATransformation instance specifying the configuration.
+
+    Returns:
+      The overwrite state ('n', 'N', 'y', 'Y').
+    """
+
     audio = mutagen.File(at.location, easy=False) # pyright: ignore
     if audio is None:
         warnings.warn(f"to_serato: file {at.location} not accessible")
-        return None
-
-    overwrite = 'n'
+        return overwrite
 
     audio, overwrite = add_std_tags(at, audio, overwrite)
 
     # XXX play_count (tag 'TXXX:SERATO_PLAYCOUNT'): encoding not
     # reverse engineered.
     
-    # audio, overwrite = add_serato_markers(at, audio, overwrite)
     audio, overwrite = add_serato_tag(at, audio, overwrite,
                                       SeratoTags.MARKERS2,
                                       to_serato_markers_v2,
@@ -428,10 +436,10 @@ def to_serato(at: ATrack, trans: ATransformation) -> None:
                                       to_serato_autotags,
                                       dump_serato_autotags)
     audio.save()
-    return None
+    return overwrite
 
 
-def to_serato_playlist(playlist: APlaylist, ofile: Path, trans: ATransformation) -> None:
+def to_serato_playlist(playlist: APlaylist, ofile: Path, trans: ATransformation, overwrite: str = 'n') -> None:
     """Generate a Serato DJ Pro Crate playlist and write tags to audio files.
 
     Args:
@@ -456,7 +464,7 @@ def to_serato_playlist(playlist: APlaylist, ofile: Path, trans: ATransformation)
 
     for at in playlist.tracks:
         # write tags to audio file
-        to_serato(at, trans)
+        overwrite = to_serato(at, trans, overwrite)
         # In Crates, Serato removes the drive and root components
         p = at.location.relative_to(at.location.anchor)
         crate.append(Track([TrackPath(p)]))
