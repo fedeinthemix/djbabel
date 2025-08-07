@@ -4,85 +4,77 @@ import mutagen
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import pytest
 
-from djbabel.types import ABeatGridBPM, ADataSource, AFormat, ALoudness, AMarker, ASoftware, ASoftwareInfo, ATrack, ATransformation, AMarkerType, AMarkerColors, AEncoder, AEncoderMode
+from djbabel.types import (
+    ABeatGridBPM,
+    ADataSource,
+    AFormat,
+    ALoudness,
+    AMarker,
+    APlaylist,
+    ASoftware,
+    ASoftwareInfo,
+    ATrack,
+    ATransformation,
+    AMarkerType,
+    AMarkerColors,
+    AEncoder,
+    AEncoderMode
+)
+
 from djbabel.utils import to_float
 
 from djbabel.serato.markers2 import CueEntry, get_serato_markers_v2, ColorEntry, BpmLockEntry, LoopEntry
 
 from djbabel.serato.utils import serato_metadata, maybe_metadata, serato_tag_name
 from djbabel.serato.types import SeratoTags
-from djbabel.serato.read import std_tag_text, track_number, release_date, location, audio_file_type, beatgrid, get_markers, locked, average_bpm, loudness, data_source, get_serato_markers_v2, from_serato
-from djbabel.serato.write import to_serato_analysis, to_serato_autotags, to_serato_beatgrid, to_serato_markers_v2, dump_serato_analysis, dump_serato_autotags, dump_serato_beatgrid, dump_serato_markers, add_envelope
+
+from djbabel.serato.read import (
+    std_tag_text,
+    track_number,
+    release_date,
+    location,
+    audio_file_type,
+    beatgrid,
+    get_markers,
+    locked,
+    average_bpm,
+    loudness,
+    data_source,
+    get_serato_markers_v2,
+    from_serato,
+    read_serato_playlist
+)
+
+from djbabel.serato.write import (
+    to_serato_analysis,
+    to_serato_autotags,
+    to_serato_beatgrid,
+    to_serato_markers_v2,
+    dump_serato_analysis,
+    dump_serato_autotags,
+    dump_serato_beatgrid,
+    dump_serato_markers,
+    add_envelope,
+    to_serato_playlist,
+)
 
 ###############################################################
 # Read files
 
 class TestSeratoReadTags:
-    
+
     trans = ATransformation(ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,2,4)),
                             ASoftwareInfo(ASoftware.REKORDBOX, (7,1,3)))
 
-    file_mp3 = Path("tests") / "audio" / "The_Todd_Terry_Project_-_Weekend.mp3"
-    file_flac = Path("tests") / "audio" / "MARRS-Pump_up_the_volume.flac"
-    file_m4a = Path("tests") / "audio" / "blow-go.m4a"
+    file_mp3 = Path("tests") / "audio" / "test_audio_1.mp3"
+    file_flac = Path("tests") / "audio" / "test_audio_1.flac"
+    file_m4a = Path("tests") / "audio" / "test_audio_1.m4a"
 
     audio_mp3 = mutagen.File(file_mp3, easy=False)
     audio_flac = mutagen.File(file_flac, easy=False)
     audio_m4a = mutagen.File(file_m4a, easy=False)
 
-    ################ Lower-Level Functions ##################
 
-    # @pytest.mark.parametrize("audio, expected", [
-    #     (audio_mp3, [ColorEntry(b'\x00', b'\xff\xff\xff'),
-    #                  CueEntry(b'\x00',
-    #                           0,
-    #                           250,
-    #                           b'\x00',
-    #                           b'\xcc\x00\xcc',
-    #                           b'\x00\x00',
-    #                           'intro'),
-    #                  CueEntry(b'\x00',
-    #                           1,
-    #                           5810,
-    #                           b'\x00',
-    #                           b'\x00\xcc\x00',
-    #                           b'\x00\x00',
-    #                           '16'),
-    #                  CueEntry(b'\x00',
-    #                           2,
-    #                           154314,
-    #                           b'\x00',
-    #                           b'\xcc\x88\x00',
-    #                           b'\x00\x00',
-    #                           'tonoght the night'),
-    #                  CueEntry(b'\x00',
-    #                           3,
-    #                           185557,
-    #                           b'\x00',
-    #                           b'\xcc\x00\x00',
-    #                           b'\x00\x00',
-    #                           '3 x 32'),
-    #                  LoopEntry(b'\x00',
-    #                            0,
-    #                            201165,
-    #                            216791,
-    #                            b'\xff\xff\xff\xff',
-    #                            b'\x00',
-    #                            b"'\xaa\xe1",
-    #                            b'\x00',
-    #                            False,
-    #                            ''),
-    #                  BpmLockEntry(False)]),
-    #     # (audio_m4a, 'Go'),
-    #     # (audio_flac, 'Pump Up The Volume'),
-    # ])
-    # def test_serato_get_serato_markers_v2(self, audio, expected):
-    #     result = get_serato_markers_v2(audio)
-    #     assert result == expected
-    
-
-    ################ Higher-Level Functions ##################
-    
     @pytest.mark.parametrize("fn, audio, expected", [
         ('title', audio_mp3, 'Weekend (Original Mix)'),
         ('title', audio_m4a, 'Go'),
@@ -304,14 +296,12 @@ class TestSeratoReadTags:
     @pytest.mark.parametrize("audio, expected", [
         (audio_mp3, ADataSource(software=ASoftware.SERATO_DJ_PRO,
                                 version=[2, 1],
-                                encoder=AEncoder(text='Lavf57.83.100',
-                                                 settings='',
-                                                 mode=AEncoderMode.CBR))),
+                                encoder=AEncoder(text='LAME 3.100.0+',
+                                                 settings='-V 2',
+                                                 mode=AEncoderMode.VBR))),
         (audio_m4a, ADataSource(software=ASoftware.SERATO_DJ_PRO,
                                 version=[0, 1],
-                                encoder=AEncoder(text='Lavf59.16.100',
-                                                 settings='',
-                                                 mode=AEncoderMode.UNKNOWN))),
+                                encoder=None)),
         (audio_flac, ADataSource(software=ASoftware.SERATO_DJ_PRO,
                                  version=[0, 1],
                                  encoder=None)),
@@ -328,9 +318,9 @@ class TestSeratoWriteTags:
     trans = ATransformation(ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,2,4)),
                             ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,2,4)))
 
-    file_mp3 = Path("tests") / "audio" / "The_Todd_Terry_Project_-_Weekend.mp3"
-    file_flac = Path("tests") / "audio" / "MARRS-Pump_up_the_volume.flac"
-    file_m4a = Path("tests") / "audio" / "blow-go.m4a"
+    file_mp3 = Path("tests") / "audio" / "test_audio_1.mp3"
+    file_flac = Path("tests") / "audio" / "test_audio_1.flac"
+    file_m4a = Path("tests") / "audio" / "test_audio_1.m4a"
 
     audio_mp3 = mutagen.File(file_mp3, easy=False)
     audio_flac = mutagen.File(file_flac, easy=False)
@@ -364,9 +354,9 @@ class TestSeratoWriteTags:
         (audio_mp3, SeratoTags.MARKERS2,
          lambda x, s: dump_serato_markers(to_serato_markers_v2(x))),
         (audio_m4a, SeratoTags.MARKERS2,
-         lambda x, s: add_envelope(dump_serato_markers(to_serato_markers_v2(x)), s, 515)),
+         lambda x, s: add_envelope(dump_serato_markers(to_serato_markers_v2(x)), s)),
         (audio_flac, SeratoTags.MARKERS2,
-         lambda x, s: add_envelope(dump_serato_markers(to_serato_markers_v2(x)), s, 515)),
+         lambda x, s: add_envelope(dump_serato_markers(to_serato_markers_v2(x)), s)),
 
     ])
     def test_serato_analysis(self, audio, stag, fn):
@@ -375,3 +365,49 @@ class TestSeratoWriteTags:
         expected = maybe_metadata(audio, serato_tag_name(stag, ty))
         result = fn(at, stag)
         assert result == expected
+
+###############################################################
+# Crates
+
+class TestSeratoCrate:
+    trans = ATransformation(ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,2,4)),
+                            ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,2,4)))
+
+    file_mp3 = Path("tests") / "audio" / "crate_write_test.mp3"
+    file_flac = Path("tests") / "audio" / "crate_write_test.flac"
+    file_m4a = Path("tests") / "audio" / "crate_write_test.m4a"
+
+    file_mp3_ref = Path("tests") / "audio" / "crate_write_test_ref.mp3"
+    file_flac_ref = Path("tests") / "audio" / "crate_write_test_ref.flac"
+    file_m4a_ref = Path("tests") / "audio" / "crate_write_test_ref.m4a"
+
+    audio_mp3_ref = mutagen.File(file_mp3_ref, easy=False) # pyright: ignore
+    audio_flac_ref = mutagen.File(file_flac_ref, easy=False) # pyright: ignore
+    audio_m4a_ref = mutagen.File(file_m4a_ref, easy=False) # pyright: ignore
+
+    def clear_tags(self, path: Path):
+        a = mutagen.File(path, easy=False)  # pyright: ignore
+        a.delete()                          # pyright: ignore
+        a.save()                            # pyright: ignore
+
+
+    def test_serato_playlist(self):
+        crate = Path("tests") / 'subcrates' / 'crate_write_test.crate'
+
+        # clear tags of files that we write.
+        for a in [self.file_mp3, self.file_flac, self.file_m4a]:
+            self.clear_tags(a)
+
+        # Change 'at.location' to preserve the reference files.
+        at_mp3 = from_serato(self.audio_mp3_ref) # pyright: ignore
+        at_mp3.location = self.file_mp3
+        at_flac = from_serato(self.audio_flac_ref) # pyright: ignore
+        at_flac.location = self.file_flac
+        at_m4a = from_serato(self.audio_m4a_ref) # pyright: ignore
+        at_m4a.location = self.file_m4a
+
+        apl_ref = APlaylist('crate_write_test', [at_mp3, at_flac, at_m4a])
+        to_serato_playlist(apl_ref, crate, self.trans)
+        apl = read_serato_playlist(crate, anchor=Path(""))
+
+        assert apl == apl_ref

@@ -46,7 +46,7 @@ from djbabel.types import ABeatGridBPM, ADataSource, AFormat, AMarkerType, AMark
 
 from djbabel.serato import from_serato, read_serato_playlist
 
-from djbabel.serato.crate import CrateFieldKind, take_field, take_field_type, parse_field_bool, Unknown, take_fields, created_classes, get_track_paths
+from djbabel.serato.crate.read import CrateFieldKind, take_field, take_field_type, parse_field_bool, Unknown, take_fields, created_classes, get_track_paths
 
 from djbabel.utils import beatgrid_offset
 
@@ -155,7 +155,8 @@ print(hexdump(mv2_b_mp3))
 ##########################################################
 # CRATES
 
-from djbabel.traktor.utils import traktor_path
+# from djbabel.traktor.utils import traktor_path
+from djbabel.serato.crate.write import write_field, write_fields, field_type, field_name
 
 fn = Path('subcrates') / 'FEBE_MIX_80_90.crate'
 
@@ -166,10 +167,115 @@ fn = Path('subcrates') / 'FEBE_MIX_80_90.crate'
 
 with open(fn, "rb") as f:
     data = f.read()
-
+  
 fp = io.BytesIO(data)
+
+# f1 = take_field(fp)
+# f2 = take_field(fp)
+# f3 = take_field(fp)
+
 flds = take_fields(fp)
 get_track_paths(flds)
+
+## write
+
+data_w = flds[12]
+f_type = field_type(data_w)
+f_name = field_name(data_w)
+length = len(data_w.value)
+
+if f_name == b'vrsn':
+    desc = f_name
+else:
+    desc = f_type + f_name
+
+content = data_w.value
+
+fp_w = io.BytesIO()
+# write_field(fp_w, data_w)
+bb = write_fields(fp_w, flds)
+out_w = fp_w.getvalue()
+
+# compare_bytes(data[:len(out_w)], out_w)
+compare_bytes(data, out_w)
+
+## Crate playlist
+
+from djbabel.serato.write import to_serato_playlist
+
+caw_ref_mp3 = Path('audio') / 'crate_write_test_ref.mp3'
+caw_ref_flac = Path('audio') / 'crate_write_test_ref.flac'
+caw_ref_m4a = Path('audio') / 'crate_write_test_ref.m4a'
+
+
+at_mp3 = from_serato(mutagen.File(caw_ref_mp3, easy=False))
+at_flac = from_serato(mutagen.File(caw_ref_flac, easy=False))
+at_m4a = from_serato(mutagen.File(caw_ref_m4a, easy=False))
+
+caw_mp3 = Path('audio') / 'crate_write_test.mp3'
+caw_flac = Path('audio') / 'crate_write_test.flac'
+caw_m4a = Path('audio') / 'crate_write_test.m4a'
+
+at_mp3.location = caw_mp3
+at_flac.location = caw_flac
+at_m4a.location = caw_m4a
+
+trans = ATransformation(parse_input_format('sdjpro'),
+                        parse_output_format('rb7')) # XXX add 'sdjpro'
+
+crate = Path('subcrates') / 'crate_write_test.crate'
+
+apl = APlaylist('crate_write_test', [at_mp3, at_flac, at_m4a])
+to_serato_playlist(apl, crate, trans)
+
+apl_back = read_serato_playlist(crate, anchor=Path(""))
+
+def compare_pl_tracks(ref, pl):
+    for (ot, t) in zip(ref.tracks, pl.tracks):
+        for f in fields(ot):
+            v_ref = getattr(ot, f.name)
+            v = getattr(t, f.name)
+            if v_ref != v:
+                print(f"difference in track {t.title}, field {f.name}")
+                print(f"ref {v_ref}, track {v}")
+
+compare_pl_tracks(apl, apl_back)
+
+
+def compare_track(audio_ref, audio):
+    tags_ref = audio_ref.tags
+    tags = audio.tags
+    differences = False
+    if len(tags_ref) != len(tags):
+        print("different number of tags!")
+        differences = True
+    for k in tags.keys():
+        v_ref = tags_ref[k]
+        v = tags[k]
+        if v_ref != v:
+            print(f"differt tag {k}, {v_ref} vs. {v}")
+            differences = True
+    print(f"differences: {differences}")
+
+
+compare_track(audio_ref, audio_test)
+        
+
+
+
+#######################
+
+
+from djbabel.serato.crate.read import created_classes, ReverseOrder
+
+
+rr = created_classes['ReverseOrder'](False)
+
+match rr:
+    case ReverseOrder(v):
+        print("1")
+    case _:
+        print("2")
 
 ##########################################################
 # REkordbox
@@ -199,7 +305,7 @@ to_rekordbox_playlist(apl, Path("pl_rekordbox.xml"), trans)
 ##########################################################
 # Write Serato DJ Pro
 
-from djbabel.serato.write import dump_serato_analysis, dump_serato_autotags, dump_serato_beatgrid, format_mp3_std_tag, to_serato_analysis, to_serato_autotags, to_serato_beatgrid, to_serato_markers_v2, dump_serato_markers, add_envelope, insert_newlines, remove_b64padding
+from djbabel.serato.write import dump_serato_analysis, dump_serato_autotags, dump_serato_beatgrid, format_mp3_std_tag, to_serato_analysis, to_serato_autotags, to_serato_beatgrid, to_serato_markers_v2, dump_serato_markers, add_envelope, insert_newlines, remove_b64padding, to_serato_playlist
 import djbabel.serato.markers2 as markers2
 from djbabel.utils import closest_color_perceptual
 
@@ -254,7 +360,7 @@ ty_flac = audio_file_type(audio_flac)
 
 m2_raw_flac = maybe_metadata(audio_flac, serato_tag_name(SeratoTags.MARKERS2, ty_flac))
 m2_bytes_flac = dump_serato_markers(to_serato_markers_v2(at_flac))
-m2_bytes_flac_env = add_envelope(m2_bytes_flac, SeratoTags.MARKERS2, 515)
+m2_bytes_flac_env = add_envelope(m2_bytes_flac, SeratoTags.MARKERS2)
 compare_bytes(m2_raw_flac, m2_bytes_flac_env)
 
 bg_raw_flac = maybe_metadata(audio_flac, serato_tag_name(SeratoTags.BEATGRID, ty_flac))
@@ -292,7 +398,7 @@ ty_m4a = audio_file_type(audio_m4a)
 
 m2_raw_m4a = maybe_metadata(audio_m4a, serato_tag_name(SeratoTags.MARKERS2, ty_m4a))
 m2_bytes_m4a = dump_serato_markers(to_serato_markers_v2(at_m4a))
-m2_bytes_m4a_env = add_envelope(m2_bytes_m4a, SeratoTags.MARKERS2, 515)
+m2_bytes_m4a_env = add_envelope(m2_bytes_m4a, SeratoTags.MARKERS2)
 compare_bytes(m2_raw_m4a, m2_bytes_m4a_env)
 
 # Beatgrid
@@ -322,16 +428,6 @@ ag_bytes_m4a = dump_serato_autotags(to_serato_autotags(at_m4a))
 ag_bytes_m4a_env = add_envelope(ag_bytes_m4a, SeratoTags.AUTOTAGS)
 compare_bytes(ag_raw_payload_m4a, ag_bytes_m4a)
 compare_bytes(ag_raw_m4a, ag_bytes_m4a_env)
-
-######################
-
-match 1:
-    case int(v):
-        print("int")
-    case _:
-        print("unknown")
-
-
 
 #####################
 #

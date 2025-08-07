@@ -6,20 +6,44 @@ import mutagen.id3
 from mutagen.id3 import Frame, GEOB, Encoding # pyright: ignore
 from mutagen.mp4 import AtomDataType, MP4FreeForm
 from mutagen._file import FileType # pyright: ignore
-import struct
 from pathlib import Path
+import struct
 from typing import Literal
 import warnings
-
 
 from .analysis import Analysis
 from .autotags import dump as dump_autotags, AutoTags
 from .beatgrid import NonTerminalBeatgridMarker, TerminalBeatgridMarker, Footer
 from .markers2 import BpmLockEntry, ColorEntry, CueEntry, LoopEntry
-from ..types import AFormat, AMarker, AMarkerColors, AMarkerType, ATrack, ATransformation
+from ..types import (
+    AFormat,
+    AMarker,
+    AMarkerColors,
+    AMarkerType,
+    ATrack,
+    ATransformation,
+    APlaylist,
+)
 from .types import SeratoTags
 from ..utils import s_to_ms, audio_file_type
-from .utils import pack_color, FMT_VERSION, serato_tag_marker, get_tags, map_to_aformat
+from .utils import (
+    pack_color,
+    FMT_VERSION,
+    serato_tag_marker,
+    get_tags,
+    map_to_aformat
+)
+from .crate.write import (
+    write_fields,
+    Version,
+    Sorting,
+    ColumnName,
+    ColumnTitle,
+    ColumnWidth,
+    ReverseOrder,
+    Track,
+    TrackPath,
+)
 
 #########################################################################
 
@@ -73,7 +97,7 @@ def to_serato_markers_v2(at: ATrack) -> list[CueEntry | LoopEntry | ColorEntry |
             case AMarker(name, color, start, end, AMarkerType.LOOP, index, locked):
                 c = pack_color(color.value) if color is not None else pack_color(default_color)
                 return LoopEntry(b'\x00', index, round(s_to_ms(start)), round(s_to_ms(end)), b'\xff\xff\xff\xff', b'\x00', c, b'\x00', locked, name)
-            case (r, g, b):
+            case (_, _, _):
                 return ColorEntry(b'\x00', pack_color(m))
             case v if isinstance(v, bool):
                 return BpmLockEntry(v)
@@ -191,7 +215,15 @@ def dump_serato_beatgrid(bg: list[NonTerminalBeatgridMarker | TerminalBeatgridMa
 
 ###### Envelope ######
 
-def add_envelope(data: bytes, stag: SeratoTags, min_len: int = 0) -> bytes:
+def envelope_padding_min_len(stag: SeratoTags) -> int:
+    match stag:
+        case SeratoTags.MARKERS2:
+            return 515
+        case _:
+            return 0
+
+
+def add_envelope(data: bytes, stag: SeratoTags) -> bytes:
     """Add envelope bytes used in FLAC and M4A files.
     """
     env_marker = serato_tag_marker(stag)
@@ -201,7 +233,8 @@ def add_envelope(data: bytes, stag: SeratoTags, min_len: int = 0) -> bytes:
         data_trimmed = remove_b64padding(data + b'\x00')
     else:
         data_trimmed = remove_b64padding(data)
-        
+
+    min_len = envelope_padding_min_len(stag)
     data_trimmed_len = len(data_trimmed)
     padding = b'\x00' * (min_len - data_trimmed_len) if data_trimmed_len < min_len else b''
     b64data = base64.b64encode(prefix + data_trimmed + padding)
@@ -395,4 +428,40 @@ def to_serato(at: ATrack, trans: ATransformation) -> None:
                                       to_serato_autotags,
                                       dump_serato_autotags)
     audio.save()
+    return None
+
+
+def to_serato_playlist(playlist: APlaylist, ofile: Path, trans: ATransformation) -> None:
+    """Generate a Serato DJ Pro Crate playlist and write tags to audio files.
+
+    Args:
+    -----
+      playlist: the playlist to convert.
+      ofile: output file name.
+      trans: information about the source and target format.
+    """
+    # header
+    crate = [
+        Version(value='1.0/Serato ScratchLive Crate'),
+        Sorting(value=[ColumnName(value='#'), ReverseOrder(value=False)]),
+        ColumnTitle(value=[ColumnName(value='playCount'), ColumnWidth(value='0')]),
+        ColumnTitle(value=[ColumnName(value='artist'), ColumnWidth(value='0')]),
+        ColumnTitle(value=[ColumnName(value='song'), ColumnWidth(value='0')]),
+        ColumnTitle(value=[ColumnName(value='bpm'), ColumnWidth(value='0')]),
+        ColumnTitle(value=[ColumnName(value='key'), ColumnWidth(value='0')]),
+        ColumnTitle(value=[ColumnName(value='album'), ColumnWidth(value='0')]),
+        ColumnTitle(value=[ColumnName(value='length'), ColumnWidth(value='0')]),
+        ColumnTitle(value=[ColumnName(value='comment'), ColumnWidth(value='0')]),
+    ]
+
+    for at in playlist.tracks:
+        # write tags to audio file
+        to_serato(at, trans)
+        # In Crates, Serato removes the drive and root components
+        p = at.location.relative_to(at.location.anchor)
+        crate.append(Track([TrackPath(p)]))
+
+    with open(ofile, "wb") as f:
+        write_fields(f, crate)
+
     return None

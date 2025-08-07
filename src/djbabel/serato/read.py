@@ -8,10 +8,9 @@ from .types import EntryBase
 from ..types import ATrack, AMarkerType, AMarker, ABeatGridBPM, ADataSource, ALoudness, ASoftware, AFormat, APlaylist
 from .utils import audio_file_type, parse_color, map_to_aformat, map_to_mp4_tag, get_tags
 from ..utils import path_anchor, get_leading_base64_part, closest_color_perceptual, ms_to_s, audio_endocer, to_int
-from .crate import take_fields, get_track_paths
+from .crate.read import take_fields, get_track_paths
 
 import base64
-from collections.abc import Callable
 from datetime import date
 import io
 import mutagen
@@ -165,14 +164,14 @@ def release_date(audio: FileType):
 ###########################################################################
 # other metadata
 
-def file_size(audio: FileType) -> int:
+def file_size(audio: FileType) -> int | None:
     if audio.filename is None:
-        s = 0
+        s = None
     else:
         try:
             s = os.path.getsize(audio.filename)
         except FileNotFoundError:
-            s = 0
+            s = None
     return s
 
 

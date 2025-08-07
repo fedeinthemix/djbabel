@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2025 Federico Beffa <beffa@fbengineering.ch>
+# SPDX-FileCopyrightText: 2024 Jan Holthuis <jan.holthuis@rub.de>
+#
+# SPDX-License-Identifier: MPL-2.0
+
 """Manipulate Serato DJ Pro Crates
 
 A Crate consists of a list of header names and width, followed by the
@@ -6,13 +11,14 @@ of the function 'take_fields'.  From the result of 'take_fields', the
 track list (paths) can be extracted with 'get_track_paths'.
 """
 
+from dataclasses import make_dataclass, dataclass
 import struct
 from pathlib import Path
 from enum import Enum
 from io import BytesIO
 from typing import BinaryIO
 from collections.abc import Generator
-from .types import EntryBase
+from ..types import EntryBase
 from functools import reduce
 
 class CrateFieldKind(Enum):
@@ -27,7 +33,8 @@ class CrateFieldKind(Enum):
 #################################################################
 # Code based on https://github.com/Holzhaus/triseratops/tree/main
 #
-# original Rust code licensed uner MPL-2.0 license
+# original Rust code licensed uner MPL-2.0 license.
+# See LICENSES/MPL-2.0.txt
 
 class CEntry(EntryBase):
     pass
@@ -58,16 +65,15 @@ class UnknownTextField(CEntry):
 
 ############################################################
 
-def create_entry_class(class_name: str, fields: dict[str, type]) -> type[CEntry]:
-    def load_method(cls, data):
-        return cls(*data)
+def create_entry_dataclass(class_name: str, fields: dict[str, type]) -> type[CEntry]:
+    fields_list = list(fields.items())
 
-    class_dict = {
-        'FIELDS': tuple(fields.keys()),
-        'load': classmethod(load_method),
-        '__annotations__': fields
-    }
-    return type(class_name, (CEntry,), class_dict)
+    new_class = make_dataclass(
+        class_name,
+        fields_list,
+        bases=(CEntry,),
+    )
+    return new_class
 
 created_classes = {} # store dynamically created classes
 
@@ -107,8 +113,39 @@ class_names = {
 }
 
 for name in class_names:
-    new_class = create_entry_class(name, {'value' : str},)
+    new_class = create_entry_dataclass(name, {'value' : class_names[name]})
     created_classes[name] = new_class
+
+Album = created_classes['Album']
+Artist = created_classes['Artist']
+BPM = created_classes['BPM']
+BeatgridLocked = created_classes['BeatgridLocked']
+Bitrate = created_classes['Bitrate']
+Comment = created_classes['Comment']
+Composer = created_classes['Composer']
+DateAdded = created_classes['DateAdded']
+DateAddedStr = created_classes['DateAddedStr']
+FilePath = created_classes['FilePath']
+FileSize = created_classes['FileSize']
+FileTime = created_classes['FileTime']
+FileType = created_classes['FileType']
+Genre = created_classes['Genre']
+Grouping = created_classes['Grouping']
+Key = created_classes['Key']
+Label = created_classes['Label']
+Length = created_classes['Length']
+Missing = created_classes['Missing']
+SampleRate = created_classes['SampleRate']
+SongTitle = created_classes['SongTitle']
+Track = created_classes['Track']
+Version = created_classes['Version']
+Year = created_classes['Year']
+Sorting = created_classes['Sorting']
+ReverseOrder = created_classes['ReverseOrder']
+ColumnTitle = created_classes['ColumnTitle']
+ColumnName = created_classes['ColumnName']
+ColumnWidth = created_classes['ColumnWidth']
+TrackPath = created_classes['TrackPath']
 
 ############################################################
 
@@ -155,14 +192,13 @@ def take_field_name(desc: bytes) -> bytes:
 ############################################################
 
 def parse_field_bool(name: bytes, value: bool) -> CEntry:
-    bt = (value,)
     match name:
         case b"bgl":
-            field = created_classes['BeatgridLocked'].load(bt)
+            field = BeatgridLocked(value)
         case b"mis":
-            field = created_classes['Missing'].load(bt)
+            field = Missing(value)
         case b"rev":
-            field = created_classes['ReverseOrder'].load(bt)
+            field = ReverseOrder(value)
         # b"crt" => ???
         # b"hrt" => ???
         # b"iro" => ???
@@ -174,90 +210,87 @@ def parse_field_bool(name: bytes, value: bool) -> CEntry:
         # b"wlb" => ???
         # b"wll" => ???
         case _:
-            field = UnknownBooleanField(name, bt)
+            field = UnknownBooleanField(name, value)
     return field
 
 def parse_field_u32(name: bytes, value) -> CEntry:
-    vt = (value,)
     match name:
         case b"add":
-            field = created_classes['DateAdded'].load(vt)
+            field = DateAdded(value)
         case b"tme":
-            field = created_classes['FileTime'].load(vt)
+            field = FileTime(value)
         # b"lbl" => ???
         # b"fsb" => ???
         # b"tkn" => ???
         # b"dsc" => ???
         case _:
-            field = UnknownU32Field(name, vt)
+            field = UnknownU32Field(name, value)
     return field
 
 def parse_field_path(name: bytes, path: Path) -> CEntry:
-    pt = (path,)
     match name:
         case b"fil":
-            field = created_classes['FilePath'].load(pt)
+            field = FilePath(path)
         case  b"trk":
-            field = created_classes['TrackPath'].load(pt)
+            field = TrackPath(path)
         case _:
-            field = UnknownPathField(name, pt)
+            field = UnknownPathField(name, path)
     return field
 
 def parse_field_text(name: bytes, text: str) -> CEntry:
-    tt = (text,)
     match name:
         case b"add":
-            field = created_classes['DateAddedStr'].load(tt)
+            field = DateAddedStr(text)
         case b"alb":
-            field = created_classes['Album'].load(tt)
+            field = Album(text)
         case b"art":
-            field = created_classes['Artist'].load(tt)
+            field = Artist(text)
         case b"bit":
-            field = created_classes['Bitrate'].load(tt)
+            field = Bitrate(text)
         case b"bpm":
-            field = created_classes['BPM'].load(tt)
+            field = BPM(text)
         case b"cmp":
-            field = created_classes['Composer'].load(tt)
+            field = Composer(text)
         case b"com":
-            field = created_classes['Comment'].load(tt)
+            field = Comment(text)
         case b"gen":
-            field = created_classes['Genre'].load(tt)
+            field = Genre(text)
         case b"grp":
-            field = created_classes['Grouping'].load(tt)
+            field = Grouping(text)
         case b"key":
-            field = created_classes['Key'].load(tt)
+            field = Key(text)
         case b"lbl":
-            field = created_classes['Label'].load(tt)
+            field = Label(text)
         case b"len":
-            field = created_classes['Length'].load(tt)
+            field = Length(text)
         case b"siz":
-            field = created_classes['FileSize'].load(tt)
+            field = FileSize(text)
         case b"smp":
-            field = created_classes['SampleRate'].load(tt)
+            field = SampleRate(text)
         case b"sng":
-            field = created_classes['SongTitle'].load(tt)
+            field = SongTitle(text)
         case b"typ":
-            field = created_classes['FileType'].load(tt)
+            field = FileType(text)
         case b"tyr":
-            field = created_classes['Year'].load(tt)
+            field = Year(text)
         case b"vcn":
-            field = created_classes['ColumnName'].load(tt)
+            field = ColumnName(text)
         case b"vcw":
-            field = created_classes['ColumnWidth'].load(tt)
+            field = ColumnWidth(text)
         case b"vrsn":
-            field = created_classes['Version'].load(tt)
+            field = Version(text)
         case _:
-            field = UnknownTextField(name, tt)
+            field = UnknownTextField(name, text)
     return field
 
 def parse_field_container(name: bytes, fields) -> CEntry:
     match name:
         case b"srt":
-            field = created_classes['Sorting'].load(fields)
+            field = Sorting(*fields)
         case b"trk":
-            field =  created_classes['Track'].load(fields)
+            field =  Track(*fields)
         case b"vct":
-            field =  created_classes['ColumnTitle'].load(fields)
+            field =  ColumnTitle(*fields)
         case _:
             field = UnknownContainerField(name, fields)
     return field
@@ -331,10 +364,9 @@ def take_fields(fp: BinaryIO) -> list[CEntry]:
 #################################################################
 
 def get_track_paths(fields: list[CEntry]) -> list[Path]:
-    Track = created_classes['Track']
     def get_pp(acc, trk):
         match trk:
-            case Track(value=[v]) if isinstance(v, created_classes['TrackPath']):
+            case Track(value=[v]) if isinstance(v, TrackPath):
                 return acc + [v.value]
             case _:
                 return acc
