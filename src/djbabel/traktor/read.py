@@ -1,11 +1,41 @@
 from datetime import date, datetime
-from pathlib import Path, PurePath
+from pathlib import Path
 import warnings
 import xml.etree.ElementTree as ET
 
-from ..types import ABeatGridBPM, ADataSource, AFormat, ALoudness, AMarker, APlaylist, ASoftware, ATrack
-from .utils import TRAKTOR_MARKERTYPE_MAP, TRAKTOR_MARKERTYPE_MAP, is_album_tag_attr, is_entry_tag_attr, is_tempo_tag_attr, is_info_tag_attr, traktor_attr_name, is_musical_key_attr
-from ..utils import CLASSIC2OPEN_KEY_MAP, OPEN_KEY2MUSICAL_KEY_MAP, inverse_dict, ms_to_s, to_int, to_float, path_anchor
+from ..types import (
+    ABeatGridBPM,
+    ADataSource,
+    AFormat,
+    ALoudness,
+    AMarker,
+    APlaylist,
+    ASoftware,
+    ATrack,
+    ATransformation
+)
+
+from .utils import (
+    TRAKTOR_MARKERTYPE_MAP,
+    TRAKTOR_MARKERTYPE_MAP,
+    is_album_tag_attr,
+    is_entry_tag_attr,
+    is_tempo_tag_attr,
+    is_info_tag_attr,
+    traktor_attr_name,
+    is_musical_key_attr
+)
+
+from ..utils import (
+    CLASSIC2OPEN_KEY_MAP,
+    OPEN_KEY2MUSICAL_KEY_MAP,
+    normalize_time,
+    inverse_dict,
+    ms_to_s,
+    to_int,
+    to_float,
+    path_anchor
+)
 
 ###################################################################
 
@@ -254,7 +284,7 @@ def find_collection_entry(col: ET.Element, key: str | None) -> ET.Element | None
         return out
 
 
-def read_traktor_playlist(nml_file: Path, name: str | None, anchor: Path | None = None, relative: Path | None = None) -> APlaylist:
+def read_traktor_playlist(nml_file: Path, name: str | None, trans: ATransformation, anchor: Path | None = None, relative: Path | None = None) -> APlaylist:
 
     root = ET.parse(nml_file).getroot()
     nml_version = root.get('VERSION')
@@ -295,7 +325,7 @@ def read_traktor_playlist(nml_file: Path, name: str | None, anchor: Path | None 
         e = find_collection_entry(col, k)
         if e is not None:
             at = from_traktor(e, nml_version, anchor, relative)
-            ats += [at]
+            ats.append(normalize_time(at, trans))
 
     apl = APlaylist(pl_name, ats)
     if apl.entries != entries:

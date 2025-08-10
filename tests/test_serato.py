@@ -23,9 +23,20 @@ from djbabel.types import (
 
 from djbabel.utils import to_float
 
-from djbabel.serato.markers2 import CueEntry, get_serato_markers_v2, ColorEntry, BpmLockEntry, LoopEntry
+from djbabel.serato.markers2 import (
+    CueEntry,
+    get_serato_markers_v2,
+    ColorEntry,
+    BpmLockEntry,
+    LoopEntry
+)
 
-from djbabel.serato.utils import serato_metadata, maybe_metadata, serato_tag_name
+from djbabel.serato.utils import (
+    serato_metadata,
+    maybe_metadata,
+    serato_tag_name
+)
+
 from djbabel.serato.types import SeratoTags
 
 from djbabel.serato.read import (
@@ -408,6 +419,6 @@ class TestSeratoCrate:
 
         apl_ref = APlaylist('crate_write_test', [at_mp3, at_flac, at_m4a])
         to_serato_playlist(apl_ref, crate, self.trans)
-        apl = read_serato_playlist(crate, anchor=Path(""))
+        apl = read_serato_playlist(crate, self.trans, anchor=Path(""))
 
         assert apl == apl_ref

@@ -184,22 +184,43 @@ def marker_offset(at: ATrack, trans: ATransformation) -> float:
     return beatgrid_offset(at, trans)
 
 
-def adjust_time(at: ATrack, trans: ATransformation) -> ATrack:
-    """Adjust the markers and beatgrid time according to target.
+def adjust_time(at: ATrack, trans: ATransformation, offset_sign: int) -> ATrack:
+    """Adjust the markers and beatgrid time.
+
+    Args:
+      at: The audio track information.
+      trans: The transformation to be performed.
+      offset_sign: -1 -> normalize to ATrack reference ('Serato DJ Pro'). 1 -> adjust normalized time to target.
+
+    Returns:
+      The audio track information 'at' with beatgrid and markers timing adjusted.
     """
-    m_offset = marker_offset(at, trans)
+    m_offset = offset_sign * marker_offset(at, trans)
     new_markers = []
     for m in at.markers:
         new_start = m.start + m_offset
         new_end = (m.end + m_offset) if m.end is not None else None
         new_markers = new_markers + [replace(m, start=new_start, end=new_end)]
-    bg_offset = beatgrid_offset(at, trans)
+    bg_offset = offset_sign * beatgrid_offset(at, trans)
     new_beatgrid = []
     for bg in at.beatgrid:
         new_position = bg.position + bg_offset
         new_beatgrid = new_beatgrid + [replace(bg,position=new_position)]
     return replace(at, markers=new_markers, beatgrid=new_beatgrid)
 
+
+def adjust_time_to_target(at: ATrack, trans: ATransformation) -> ATrack:
+    """Adjust the markers and beatgrid time according to target.
+    """
+    return adjust_time(at, trans, 1)
+
+def normalize_time(at: ATrack, trans: ATransformation) -> ATrack:
+    """Normalize markers and beatgrid time to the reference used by ATrack.
+
+    The reference is 'Serato DJ Pro'.
+    """
+    return adjust_time(at, trans, -1)
+    
 
 def reindex_sdjpro_loops(markers: list[AMarker], trans: ATransformation) -> list[AMarker]:
     """Reindex Serato DJ Pro loops.

@@ -6,10 +6,24 @@ from mutagen import MutagenError # pyright: ignore
 from pathlib import Path
 import warnings
 
-from .types import ASoftwareInfo, APlaylist, ASoftware, ATransformation
-from .serato import read_serato_playlist, to_serato_playlist
+from .types import (
+    ASoftwareInfo,
+    APlaylist,
+    ASoftware,
+    ATransformation
+)
+
+from .serato import (
+    read_serato_playlist,
+    to_serato_playlist
+)
+
 from .rekordbox import to_rekordbox_playlist
-from .traktor import to_traktor_playlist, read_traktor_playlist
+
+from .traktor import (
+    to_traktor_playlist,
+    read_traktor_playlist
+)
 
 #######################################################################
 # Warnings
@@ -53,9 +67,9 @@ def parse_output_format(arg: str) -> ASoftwareInfo:
 def get_playlist(filepath: Path, trans: ATransformation, anchor: Path | None, relative: Path | None) -> APlaylist:
     match trans.source:
         case ASoftwareInfo(ASoftware.SERATO_DJ_PRO, _):
-            return read_serato_playlist(filepath, anchor, relative)
+            return read_serato_playlist(filepath, trans, anchor, relative)
         case ASoftwareInfo(ASoftware.TRAKTOR, (4, _, _)):
-            return read_traktor_playlist(filepath, None, anchor, relative)
+            return read_traktor_playlist(filepath, None, trans, anchor, relative)
         case _:
             raise ValueError(f'Source format {trans.source} not supported.')
 

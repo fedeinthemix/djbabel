@@ -2,12 +2,46 @@ from .analysis import get_serato_analysis
 from .autotags import get_serato_autotags
 from .beatgrid import get_serato_beatgrid
 # from djbabel.serato.markers import get_serato_markers
-from .markers2 import get_serato_markers_v2, CueEntry, BpmLockEntry, LoopEntry, ColorEntry
+from .markers2 import (
+    get_serato_markers_v2,
+    CueEntry,
+    BpmLockEntry,
+    LoopEntry,
+    ColorEntry
+)
+
 from .types import EntryBase
 # from djbabel.serato.overview import get_serato_overview
-from ..types import ATrack, AMarkerType, AMarker, ABeatGridBPM, ADataSource, ALoudness, ASoftware, AFormat, APlaylist
-from .utils import audio_file_type, parse_color, map_to_aformat, map_to_mp4_tag, get_tags
-from ..utils import path_anchor, get_leading_base64_part, closest_color_perceptual, ms_to_s, audio_endocer, to_int
+from ..types import (
+    ATrack,
+    AMarkerType,
+    AMarker,
+    ABeatGridBPM,
+    ADataSource,
+    ALoudness,
+    ASoftware,
+    AFormat,
+    APlaylist,
+    ATransformation
+)
+
+from .utils import (
+    audio_file_type,
+    parse_color,
+    map_to_aformat,
+    map_to_mp4_tag,
+    get_tags
+)
+
+from ..utils import (
+    path_anchor,
+    get_leading_base64_part,
+    closest_color_perceptual,
+    ms_to_s,
+    audio_endocer,
+    to_int
+)
+
 from .crate.read import take_fields, get_track_paths
 
 import base64
@@ -309,7 +343,7 @@ def from_serato(audio: FileType) -> ATrack:
         date_added = None
     )
 
-def read_serato_playlist(crate: Path, anchor: Path | None = None, relative: Path | None = None) -> APlaylist:
+def read_serato_playlist(crate: Path, trans: ATransformation, anchor: Path | None = None, relative: Path | None = None) -> APlaylist:
     """Read a Serato DJ Pro Crate.
 
     Args:
@@ -329,7 +363,7 @@ def read_serato_playlist(crate: Path, anchor: Path | None = None, relative: Path
         if a is None:
             print(f'File {p} could not be read.')
         else:
-            audios = audios + [a]
+            audios.append(a)
     name = crate.stem
     atrks = list(map(from_serato, audios))
     return APlaylist(name, atrks)

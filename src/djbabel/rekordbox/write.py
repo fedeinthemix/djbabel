@@ -1,8 +1,26 @@
-from ..types import APlaylist, ASoftware, ATrack, AFormat, AMarkerType, AMarker, ABeatGridBPM, AMarkerColors, ATransformation
-from ..utils import CLASSIC2ABBREV_KEY_MAP, adjust_time, is_str_or_none, is_int_or_none, is_float_or_none, is_date_or_none, reindex_sdjpro_loops
+from ..types import (
+    APlaylist,
+    ASoftware,
+    ATrack,
+    AFormat,
+    AMarkerType,
+    AMarker,
+    ABeatGridBPM,
+    AMarkerColors,
+    ATransformation
+)
 
-from dataclasses import fields, Field, replace
-from datetime import date
+from ..utils import (
+    CLASSIC2ABBREV_KEY_MAP,
+    adjust_time_to_target,
+    is_str_or_none,
+    is_int_or_none,
+    is_float_or_none,
+    is_date_or_none,
+    reindex_sdjpro_loops
+)
+
+from dataclasses import fields, Field
 from functools import reduce
 from math import ceil
 from pathlib import Path
@@ -247,7 +265,7 @@ def to_rekordbox(at: ATrack, tid: int, trans: ATransformation) -> ET.Element:
     fs = fields(at)
     attrs = dict(reduce(lambda acc, f: acc + rb_attr(at, f, tid),  fs, []))
     trk = ET.Element("TRACK", **attrs)
-    new_at = adjust_time(at, trans)
+    new_at = adjust_time_to_target(at, trans)
     for m in reindex_sdjpro_loops(new_at.markers, trans):
         trk.append(rb_position_mark(m))
     for i, m in enumerate(new_at.beatgrid):

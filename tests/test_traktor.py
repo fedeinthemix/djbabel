@@ -5,9 +5,51 @@ import xml.etree.ElementTree as ET
 
 from djbabel.traktor.read import aformat_from_path
 from djbabel.traktor.utils import traktor_path
-from djbabel.traktor.write import info_tag, entry_tag, album_tag, modification_info_tag, tempo_tag, musical_key_tag, loudness_tag, location_tag, cue_v2_beatgrid, cue_v2_markers, to_traktor_playlist, entry_tag
-from djbabel.traktor.read import find_collection_entry, get_info_subtag, get_album_subtag, get_tempo_subtag, get_location, get_loudness, adjust_location, get_musical_key_subtag, musical_key_to_classic_key, get_cue_v2_beatgrid, get_cue_v2_cues, read_traktor_playlist
-from djbabel.types import ABeatGridBPM, ADataSource, AFormat, ALoudness, AMarker, ASoftware, ASoftwareInfo, ATrack, ATransformation, AMarkerType, AMarkerColors
+
+from djbabel.traktor.write import (
+    info_tag,
+    entry_tag,
+    album_tag,
+    modification_info_tag,
+    tempo_tag,
+    musical_key_tag,
+    loudness_tag,
+    location_tag,
+    cue_v2_beatgrid,
+    cue_v2_markers,
+    to_traktor_playlist,
+    entry_tag
+)
+
+from djbabel.traktor.read import (
+    find_collection_entry,
+    get_info_subtag,
+    get_album_subtag,
+    get_tempo_subtag,
+    get_location,
+    get_loudness,
+    adjust_location,
+    get_musical_key_subtag,
+    musical_key_to_classic_key,
+    get_cue_v2_beatgrid,
+    get_cue_v2_cues,
+    read_traktor_playlist
+)
+
+from djbabel.types import (
+    ABeatGridBPM,
+    ADataSource,
+    AFormat,
+    ALoudness,
+    AMarker,
+    ASoftware,
+    ASoftwareInfo,
+    ATrack,
+    ATransformation,
+    AMarkerType,
+    AMarkerColors
+)
+
 from djbabel.utils import to_float
 
 ###############################################################
@@ -114,7 +156,7 @@ class TestTraktorWriteTags:
 class TestTraktorReadTags:
     
     trans = ATransformation(ASoftwareInfo(ASoftware.TRAKTOR, (4,2,0)),
-                            ASoftwareInfo(ASoftware.REKORDBOX, (7,1,3)))
+                            ASoftwareInfo(ASoftware.TRAKTOR, (4,2,0)))
 
 
     nml_path = Path('tests') / 'nml' / 'test.nml'
@@ -239,7 +281,7 @@ class TestTraktorReadTags:
 
     def test_traktor_read_playlist(self):
         assert self.e0 is not None
-        result = read_traktor_playlist(self.nml_path, None)
+        result = read_traktor_playlist(self.nml_path, None, self.trans)
         assert result.entries == 2
         assert result.name == 'test'
         assert list(map(lambda at: at.title, result.tracks)) == [

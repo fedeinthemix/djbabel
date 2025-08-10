@@ -1,6 +1,36 @@
-from ..types import ATrack, ATransformation, AMarker, ABeatGridBPM, APlaylist
-from ..utils import CLASSIC2ABBREV_KEY_MAP, CLASSIC2CAMLEOT_KEY_MAP, OPEN_KEY2MUSICAL_KEY_MAP, is_str_or_none, is_int_or_none, is_float_or_none, is_date_or_none, CLASSIC2OPEN_KEY_MAP, reindex_sdjpro_loops, s_to_ms, adjust_time, inverse_dict
-from .utils import TRAKTOR_MARKERTYPE_MAP, traktor_path, location_volume_id, is_album_tag_attr, is_entry_tag_attr, is_tempo_tag_attr, is_info_tag_attr, traktor_attr_name
+from ..types import (
+    ATrack,
+    ATransformation,
+    AMarker,
+    ABeatGridBPM,
+    APlaylist
+)
+
+from ..utils import (
+    CLASSIC2ABBREV_KEY_MAP,
+    CLASSIC2CAMLEOT_KEY_MAP,
+    OPEN_KEY2MUSICAL_KEY_MAP,
+    is_str_or_none,
+    is_int_or_none,
+    is_float_or_none,
+    is_date_or_none,
+    CLASSIC2OPEN_KEY_MAP,
+    reindex_sdjpro_loops,
+    s_to_ms,
+    adjust_time_to_target,
+    inverse_dict
+)
+
+from .utils import (
+    TRAKTOR_MARKERTYPE_MAP,
+    traktor_path,
+    location_volume_id,
+    is_album_tag_attr,
+    is_entry_tag_attr,
+    is_tempo_tag_attr,
+    is_info_tag_attr,
+    traktor_attr_name
+)
 
 from dataclasses import Field, fields
 from datetime import date, datetime
@@ -283,7 +313,7 @@ def to_traktor_playlist(playlist: APlaylist, ofile: Path, trans: ATransformation
 
     # ENTRY SUb-sub-elements
     for at in playlist.tracks:
-        new_at = adjust_time(at, trans)
+        new_at = adjust_time_to_target(at, trans)
         e = to_traktor(new_at, trans)
         coll.append(e)
 

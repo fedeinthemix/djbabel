@@ -163,7 +163,7 @@ fn = Path('subcrates') / 'FEBE_MIX_80_90.crate'
 # wp = PureWindowsPath('C:\\Users\\beffa\\test.m4a')
 # anchor = Path('/run/media/beffa/FBE\\ HDD\\ 1/backups/orione-backpc-windows/')
 # relative = Path('Users/beffa')
-# pl = read_serato_playlist(fn, anchor, relative)
+# pl = read_serato_playlist(fn, trans, anchor, relative)
 
 with open(fn, "rb") as f:
     data = f.read()
@@ -228,7 +228,7 @@ crate = Path('subcrates') / 'crate_write_test.crate'
 apl = APlaylist('crate_write_test', [at_mp3, at_flac, at_m4a])
 to_serato_playlist(apl, crate, trans)
 
-apl_back = read_serato_playlist(crate, anchor=Path(""))
+apl_back = read_serato_playlist(crate, trans, anchor=Path(""))
 
 def compare_pl_tracks(ref, pl):
     for (ot, t) in zip(ref.tracks, pl.tracks):
@@ -824,6 +824,9 @@ from datetime import datetime
 
 from djbabel.traktor.read import find_collection_entry, from_traktor, get_str_attr, is_entry_tag_attr, get_tag_attr, is_album_tag_attr, get_album_subtag, is_info_tag_attr, get_info_subtag, traktor_attr_name, get_album_subtag, is_musical_key_attr, to_date, get_location, to_bool, get_cue_v2_beatgrid, get_cue_v2_cues, get_loudness, read_traktor_playlist
 
+trans = ATransformation(parse_input_format('traktor4'),
+                        parse_output_format('rb7'))
+
 nml_tree = ET.parse('nml/test.nml')
 nml_root = nml_tree.getroot()
 nml_col = nml_root.find('COLLECTION')
@@ -847,9 +850,15 @@ e0_ldns = get_loudness(e0)
 at0 = from_traktor(e0, 20)
 at1 = from_traktor(e1, 20)
 
-apl = read_traktor_playlist(Path('nml/test.nml'), 'test')
+apl = read_traktor_playlist(Path('nml/test.nml'), 'test', trans)
 
-apl_rel = read_traktor_playlist(Path('nml/test.nml'), 'test', Path('/mnt'), Path('/Users/beffa'))
+apl_rel = read_traktor_playlist(Path('nml/test.nml'), 'test', trans, Path('/mnt'), Path('/Users/beffa'))
+
+##########################################################
+
+def binary_op(a, b, op):
+    return op(a, b)
+    
 
 ##########################################################
 
