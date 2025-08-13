@@ -24,12 +24,4 @@ def parse(b: bytes) -> list[EntryBase]:
     v = []
     for n in range(0, len(b)):
         v = v + [b[n]]
-
-    # FLAC and M4A files seems to have a tail null byte.
-    if len(v) == 3 and v[2] == 0:
-        an = Analysis(v[:2])
-    elif len(v) == 2:
-        an = Analysis(v)
-    else:
-        raise ValueError(f"get_serato_analysis: Unexpected version {bytes(v)}")
-    return [an]
+    return [Analysis(v)]

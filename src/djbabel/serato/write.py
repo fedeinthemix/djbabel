@@ -59,7 +59,8 @@ def to_serato_analysis(at: ATrack) -> Analysis:
         case AFormat.MP3:
             return Analysis([2, 1])
         case AFormat.FLAC | AFormat.M4A:
-            return Analysis([0, 1])
+            # In sime files we saw a last digit of 100.
+            return Analysis([0, 1, 0])
         case _:
             raise ValueError(f"to_serato_analysis: file format not supported {at.aformat}.")
 
@@ -362,7 +363,7 @@ def add_envelope(data: bytes, stag: SeratoTags) -> bytes:
     env_marker = serato_tag_marker(stag)
     prefix = b'application/octet-stream\x00\x00' + env_marker + b'\x00'
 
-    if stag == SeratoTags.AUTOTAGS or stag == SeratoTags.BEATGRID or stag == SeratoTags.ANALYSIS:
+    if stag == SeratoTags.AUTOTAGS or stag == SeratoTags.BEATGRID:
         data_trimmed = remove_b64padding(data + b'\x00')
     else:
         data_trimmed = remove_b64padding(data)

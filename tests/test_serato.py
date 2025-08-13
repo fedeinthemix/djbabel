@@ -311,10 +311,10 @@ class TestSeratoReadTags:
                                                  settings='-V 2',
                                                  mode=AEncoderMode.VBR))),
         (audio_m4a, ADataSource(software=ASoftware.SERATO_DJ_PRO,
-                                version=[0, 1],
+                                version=[0, 1, 0],
                                 encoder=None)),
         (audio_flac, ADataSource(software=ASoftware.SERATO_DJ_PRO,
-                                 version=[0, 1],
+                                 version=[0, 1, 0],
                                  encoder=None)),
     ])
     def test_serato_data_source(self, audio, expected):
