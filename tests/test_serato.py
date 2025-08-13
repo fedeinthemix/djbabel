@@ -61,11 +61,13 @@ from djbabel.serato.write import (
     to_serato_autotags,
     to_serato_beatgrid,
     to_serato_markers_v2,
+    to_serato_markers,
     dump_serato_analysis,
     dump_serato_autotags,
     dump_serato_beatgrid,
     dump_serato_markers_v2,
     add_envelope,
+    dump_serato_markers,
     to_serato_playlist,
 )
 
@@ -368,13 +370,21 @@ class TestSeratoWriteTags:
          lambda x, s: add_envelope(dump_serato_markers_v2(to_serato_markers_v2(x)), s)),
         (audio_flac, SeratoTags.MARKERS2,
          lambda x, s: add_envelope(dump_serato_markers_v2(to_serato_markers_v2(x)), s)),
-
+        #### markers ####
+        (audio_mp3, SeratoTags.MARKERS,
+         lambda x, s: dump_serato_markers(to_serato_markers(x), AFormat.MP3)),
+        (audio_m4a, SeratoTags.MARKERS,
+         lambda x, s: add_envelope(dump_serato_markers(to_serato_markers(x), AFormat.M4A), s)),
+        (audio_flac, SeratoTags.MARKERS,
+         lambda x, s: to_serato_markers(x)),
     ])
     def test_serato_analysis(self, audio, stag, fn):
         at = from_serato(audio)
         ty = audio_file_type(audio)
         expected = maybe_metadata(audio, serato_tag_name(stag, ty))
         result = fn(at, stag)
+        if result == []: # FLAC doesn't use MARKERS
+            result = None
         assert result == expected
 
 ###############################################################
