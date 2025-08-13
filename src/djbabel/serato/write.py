@@ -547,32 +547,34 @@ def to_serato(at: ATrack, trans: ATransformation, overwrite: str = 'n') -> str:
         warnings.warn(f"to_serato: file {at.location} not accessible")
         return overwrite
 
-    audio, overwrite = add_std_tags(at, audio, overwrite)
+    try:
+        audio, overwrite = add_std_tags(at, audio, overwrite)
 
-    # XXX play_count (tag 'TXXX:SERATO_PLAYCOUNT'): encoding not
-    # reverse engineered.
-    
-    audio, overwrite = add_serato_tag(at, audio, overwrite,
-                                      SeratoTags.MARKERS,
-                                      to_serato_markers,
-                                      lambda es: dump_serato_markers(es, at.aformat))
-    audio, overwrite = add_serato_tag(at, audio, overwrite,
-                                      SeratoTags.MARKERS2,
-                                      to_serato_markers_v2,
-                                      dump_serato_markers_v2)
-    audio, overwrite = add_serato_tag(at, audio, overwrite,
-                                      SeratoTags.BEATGRID,
-                                      to_serato_beatgrid,
-                                      dump_serato_beatgrid)
-    audio, overwrite = add_serato_tag(at, audio, overwrite,
-                                      SeratoTags.ANALYSIS,
-                                      to_serato_analysis,
-                                      dump_serato_analysis)
-    audio, overwrite = add_serato_tag(at, audio, overwrite,
-                                      SeratoTags.AUTOTAGS,
-                                      to_serato_autotags,
-                                      dump_serato_autotags)
-    audio.save()
+        # XXX play_count (tag 'TXXX:SERATO_PLAYCOUNT'): encoding not
+        # reverse engineered.
+
+        audio, overwrite = add_serato_tag(at, audio, overwrite,
+                                          SeratoTags.MARKERS,
+                                          to_serato_markers,
+                                          lambda es: dump_serato_markers(es, at.aformat))
+        audio, overwrite = add_serato_tag(at, audio, overwrite,
+                                          SeratoTags.MARKERS2,
+                                          to_serato_markers_v2,
+                                          dump_serato_markers_v2)
+        audio, overwrite = add_serato_tag(at, audio, overwrite,
+                                          SeratoTags.BEATGRID,
+                                          to_serato_beatgrid,
+                                          dump_serato_beatgrid)
+        audio, overwrite = add_serato_tag(at, audio, overwrite,
+                                          SeratoTags.ANALYSIS,
+                                          to_serato_analysis,
+                                          dump_serato_analysis)
+        audio, overwrite = add_serato_tag(at, audio, overwrite,
+                                          SeratoTags.AUTOTAGS,
+                                          to_serato_autotags,
+                                          dump_serato_autotags)
+    finally:
+        audio.save()
     return overwrite
 
 
