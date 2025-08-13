@@ -64,7 +64,7 @@ from djbabel.serato.write import (
     dump_serato_analysis,
     dump_serato_autotags,
     dump_serato_beatgrid,
-    dump_serato_markers,
+    dump_serato_markers_v2,
     add_envelope,
     to_serato_playlist,
 )
@@ -363,11 +363,11 @@ class TestSeratoWriteTags:
          lambda x, s: add_envelope(dump_serato_beatgrid(to_serato_beatgrid(x)), s)),
         #### markers2 ####
         (audio_mp3, SeratoTags.MARKERS2,
-         lambda x, s: dump_serato_markers(to_serato_markers_v2(x))),
+         lambda x, s: dump_serato_markers_v2(to_serato_markers_v2(x))),
         (audio_m4a, SeratoTags.MARKERS2,
-         lambda x, s: add_envelope(dump_serato_markers(to_serato_markers_v2(x)), s)),
+         lambda x, s: add_envelope(dump_serato_markers_v2(to_serato_markers_v2(x)), s)),
         (audio_flac, SeratoTags.MARKERS2,
-         lambda x, s: add_envelope(dump_serato_markers(to_serato_markers_v2(x)), s)),
+         lambda x, s: add_envelope(dump_serato_markers_v2(to_serato_markers_v2(x)), s)),
 
     ])
     def test_serato_analysis(self, audio, stag, fn):

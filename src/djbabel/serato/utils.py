@@ -112,17 +112,7 @@ def get_tags(audio: FileType):
 ###################################################################
 
 def parse_serato_envelope(data: bytes, prefix: bytes) -> bytes:
-    """
-    Parses the Serato Markers2 envelope found in FLAC/M4A metadata.
-    
-    Parameters:
-        data (bytes): Raw binary tag data (base64 encoded).
-        
-    Returns:
-        bytes: Extracted 'Serato Markers2' payload suitable for parsing.
-        
-    Raises:
-        ValueError: If 'Serato Markers2' cannot be found.
+    """Parses the Serato tags envelope found in FLAC/M4A metadata.
     """
 
     try:

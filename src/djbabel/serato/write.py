@@ -14,6 +14,9 @@ import warnings
 from .analysis import Analysis
 from .autotags import dump as dump_autotags, AutoTags
 from .beatgrid import NonTerminalBeatgridMarker, TerminalBeatgridMarker, Footer
+from .markers import EntryType, Entry, Color
+from .markers import dump as dump_markers
+from .markers import dump_m4a as dump_markers_m4a
 from .markers2 import BpmLockEntry, ColorEntry, CueEntry, LoopEntry
 from ..types import (
     AFormat,
@@ -129,7 +132,7 @@ def remove_b64padding(data: bytes) -> bytes:
     return data.replace(b'A=', b'').replace(b'=', b'')
 
 
-def dump_serato_markers(entries: list[ColorEntry | CueEntry | LoopEntry | BpmLockEntry]) -> bytes:
+def dump_serato_markers_v2(entries: list[ColorEntry | CueEntry | LoopEntry | BpmLockEntry]) -> bytes:
     """Convert the low-level Serato DJ Pro tag representation to the tag bytes.
     """
     null = struct.pack('B', 0x00)
@@ -164,20 +167,150 @@ def dump_serato_markers(entries: list[ColorEntry | CueEntry | LoopEntry | BpmLoc
 
     return oneone + b64data + padding
 
+###### Markers ######
+
+def markers_dummies(af: AFormat) -> bytes:
+    if af != AFormat.M4A:
+        return b'\x00\x7f\x7f\x7f\x7f\x7f'
+    else:
+        return b'\x00\xff\xff\xff\xff\xff'
+
+def to_serato_markers(at: ATrack) -> list[Entry | Color]:
+    """Convert to the low-level Serato DJ Pro tag representation.
+    """
+    # FLAC files don't use MARKERS
+    if at.aformat == AFormat.FLAC:
+        return []
+
+    def to_serato(m: AMarker | tuple[int,int,int] | bool) -> tuple[int, Entry | Color] | tuple[None, None]:
+        default_color = AMarkerColors.BLUE.value
+        match m:
+            case (AMarker(_, color, start, end, AMarkerType.CUE, index, locked)
+                  | AMarker(_, color, start, end, AMarkerType.CUE_LOAD, index, locked)):
+                c = pack_color(color.value) if color is not None else pack_color(default_color)
+                if index < 5:
+                    return (index,
+                            Entry(True,
+                                  round(s_to_ms(start)),
+                                  False,
+                                  None,
+                                  markers_dummies(at.aformat),
+                                  c,
+                                  EntryType.CUE,
+                                  locked))
+                else:
+                    return (None, None)
+            case AMarker(_, color, start, end, AMarkerType.LOOP, index, locked):
+                c = pack_color(color.value) if color is not None else pack_color(default_color)
+                if index < 9:
+                    return (5 + index,
+                            Entry(True,
+                                  round(s_to_ms(start)),
+                                  True,
+                                  round(s_to_ms(end)),
+                                  markers_dummies(at.aformat),
+                                  c,
+                                  EntryType.LOOP,
+                                  locked))
+                else:
+                    return (None, None)
+            case (_, _, _):
+                return (14, Color(pack_color(m)))
+            case _:
+                raise ValueError(f"{m} can't be converted to a Serato Marker")
+
+    if at.color is None:
+        track_color = (255, 255, 255) # default Serato DJ Pro track color
+    else:
+        track_color = at.color
+
+    # initialize with empty data
+    out = [
+        Entry(False,
+              None,
+              False,
+              None,
+              markers_dummies(at.aformat),
+              b'\x00\x00\x00',
+              EntryType.INVALID,
+              False)
+    ] * 5 + [
+        Entry(False,
+              None,
+              False,
+              None,
+              markers_dummies(at.aformat),
+              b'\x00\x00\x00',
+              EntryType.LOOP,
+              False)
+    ] * 9 + [
+        Color(b'\x00\x00\x00')
+    ]
+    for m in at.markers + [track_color]:
+        index, entry = to_serato(m)
+        if entry is not None and index is not None:
+            out[index] = entry
+
+    return out
+
+
+def dump_serato_markers(entries: list[Color | Entry], af: AFormat) -> bytes:
+    """Convert the low-level Serato DJ Pro tag representation to the tag bytes.
+    """
+    match af:
+        case AFormat.MP3:
+            return dump_markers(entries)
+        case AFormat.M4A:
+            return dump_markers_m4a(entries)
+        case AFormat.FLAC:
+            warnings.warn(f"dump_serato_markers: FLAC files don't use markers!")
+            return b''
+        case _:
+            raise ValueError(f"dump_serato_markers: file format {af} not supported")
+
 ###### Beatgrid ######
 
-def to_serato_beatgrid(at: ATrack) -> list[NonTerminalBeatgridMarker | TerminalBeatgridMarker]:
+# The meaning of the footer is uncelar. We found:
+
+# 2 M4A tracks with a footer of 65
+# - blow-go.m4a
+# - supergirl.m4a
+# But 1 M4a track with a footer of 109
+# - 2-01-Paid_in_Full.m4a
+
+# 1 FLAC file with a footer of 0
+# - MARRS-Pump_up_the_volume.flac
+
+# 2 MP3 files with a footer of 116
+# - The_Todd_Terry_Project_-_Weekend.mp3
+# - De_Lacy_-_Hideaway_(Deep_Dish_Remix).mp3
+
+# For the moment we set the footer based on the most common value we
+# observed for each audio format.
+def beatgrid_footer(at: ATrack) -> Footer:
+    match at.aformat:
+        case AFormat.MP3:
+            return Footer(116)
+        case AFormat.FLAC:
+            return Footer(0)
+        case AFormat.M4A:
+            return Footer(65)
+        case _:
+            raise ValueError(f"to_serato_beatgrid: file_format {at.aformat} not supported.")
+
+
+def to_serato_beatgrid(at: ATrack) -> list[NonTerminalBeatgridMarker | TerminalBeatgridMarker | Footer]:
     """Convert to the low-level Serato DJ Pro tag representation.
     """
     out = []
     for i, entry in enumerate(at.beatgrid[:-1]):
         dt = at.beatgrid[i+1].position - entry.position
         beats = round(entry.bpm * dt / 60)
-        out += [NonTerminalBeatgridMarker(entry.position, beats)]
+        out.append(NonTerminalBeatgridMarker(entry.position, beats))
     if len(at.beatgrid) > 0:
         term_bg = at.beatgrid[-1]
-        out += [TerminalBeatgridMarker(term_bg.position, term_bg.bpm)]
-    out += [Footer(0)]
+        out.append(TerminalBeatgridMarker(term_bg.position, term_bg.bpm))
+    out.append(beatgrid_footer(at))
     return out
         
     
@@ -248,7 +381,7 @@ Action = Literal["continue", "break", "process"]
 
 def ask_to_overwrite(tag: str, path: Path) -> str:
     while True:
-        overwrite = input(f'Overwrite tag {tag} in file {path} (y/[n]/Y/N)? ')
+        overwrite = input(f'{path}: Overwrite tag {tag} (y/[n]/Y/N)? ')
         if overwrite not in ['y', 'n', 'Y', 'N']:
             print(f"Please answer 'n' for NO, 'y' for YES, 'N' for NO to all, or 'Y' for YES to all.\n")
         else:
@@ -260,7 +393,7 @@ def handle_existing_tag(tag: str, tags: dict, overwrite: str, location: Path) ->
         if overwrite == 'N':
             return "break", overwrite
         else:
-            ow = ask_to_overwrite(tag, location)            
+            ow = ask_to_overwrite(tag, location)
             if ow in ['Y', 'N']:
                 overwrite = ow
             if ow not in ['y', 'Y']:
@@ -371,12 +504,11 @@ def split_tag_name(tag: str) -> tuple[str, str, str]:
 
 
 def add_serato_tag(at, audio, overwrite, stag, to_low, dump):
-    aformat = audio_file_type(audio)
-    tag = stag.value.names[aformat]
+    tag = stag.value.names[at.aformat]
     low = to_low(at)
     if low != [] and low is not None:
         data = dump(low)
-        match aformat:
+        match at.aformat:
             case AFormat.MP3:
                 _, tag_desc, _ = split_tag_name(tag)
                 frame = GEOB(encoding=Encoding.UTF8,
@@ -389,7 +521,7 @@ def add_serato_tag(at, audio, overwrite, stag, to_low, dump):
             case AFormat.M4A:
                 audio[tag] = MP4FreeForm(data=add_envelope(data, stag))
             case _:
-                raise ValueError(f"add_serato_markers: file format {aformat} not supported")            
+                raise ValueError(f"add_serato_markers: file format {at.aformat} not supported")            
     return audio, overwrite
 
 #########################################################################
@@ -420,9 +552,13 @@ def to_serato(at: ATrack, trans: ATransformation, overwrite: str = 'n') -> str:
     # reverse engineered.
     
     audio, overwrite = add_serato_tag(at, audio, overwrite,
+                                      SeratoTags.MARKERS,
+                                      to_serato_markers,
+                                      lambda es: dump_serato_markers(es, at.aformat))
+    audio, overwrite = add_serato_tag(at, audio, overwrite,
                                       SeratoTags.MARKERS2,
                                       to_serato_markers_v2,
-                                      dump_serato_markers)
+                                      dump_serato_markers_v2)
     audio, overwrite = add_serato_tag(at, audio, overwrite,
                                       SeratoTags.BEATGRID,
                                       to_serato_beatgrid,

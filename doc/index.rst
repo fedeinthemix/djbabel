@@ -21,6 +21,7 @@ A Python library to convert DJ playlists between
    :caption: Contents:
 
    intro
+   serato
    problems
 
 ..  LocalWords:  Serato Traktor rekordbox
