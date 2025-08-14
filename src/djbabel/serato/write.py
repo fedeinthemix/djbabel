@@ -345,7 +345,7 @@ def dump_serato_beatgrid(bg: list[NonTerminalBeatgridMarker | TerminalBeatgridMa
             case _:
                 raise ValueError(f"dump_serato_beatgrid: Unexpected entry {entry}")
 
-    return insert_newlines(data.getvalue())
+    return data.getvalue()
 
 ###### Envelope ######
 
@@ -364,9 +364,11 @@ def add_envelope(data: bytes, stag: SeratoTags) -> bytes:
     prefix = b'application/octet-stream\x00\x00' + env_marker + b'\x00'
 
     if stag == SeratoTags.AUTOTAGS or stag == SeratoTags.BEATGRID:
-        data_trimmed = remove_b64padding(data + b'\x00')
-    else:
+        data_trimmed = data + b'\x00'
+    elif stag == SeratoTags.MARKERS2:
         data_trimmed = remove_b64padding(data)
+    else:
+        data_trimmed = data
 
     min_len = envelope_padding_min_len(stag)
     data_trimmed_len = len(data_trimmed)
