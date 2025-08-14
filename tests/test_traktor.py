@@ -50,7 +50,7 @@ from djbabel.types import (
     AMarkerColors
 )
 
-from djbabel.utils import to_float
+from djbabel.utils import path_anchor, to_float
 
 ###############################################################
 # Write NML files
@@ -222,19 +222,19 @@ class TestTraktorReadTags:
     def test_traktor_get_location(self):
         assert self.e0 is not None
         result = get_location(self.e0)
-        assert result.as_posix() == '/Users/myname/Music/David Guetta/Beautiful People - Single/David_Guetta,_Sia_-_Beautiful_People_(Extended).mp3'
+        assert result.as_posix() == path_anchor(None).as_posix() + 'Users/myname/Music/David Guetta/Beautiful People - Single/David_Guetta,_Sia_-_Beautiful_People_(Extended).mp3'
 
 
     @pytest.mark.parametrize("anchor, rel, expected", [
-        (PurePosixPath('/mnt'), PurePosixPath('/Users/myname'), '/mnt/Music/David Guetta/Beautiful People - Single/David_Guetta,_Sia_-_Beautiful_People_(Extended).mp3'),
-        (None, None, '/Users/myname/Music/David Guetta/Beautiful People - Single/David_Guetta,_Sia_-_Beautiful_People_(Extended).mp3'),
-        (PurePosixPath('/mnt'), None, '/mnt/Users/myname/Music/David Guetta/Beautiful People - Single/David_Guetta,_Sia_-_Beautiful_People_(Extended).mp3'),
-        (None, PurePosixPath('/Users/myname'), '/Music/David Guetta/Beautiful People - Single/David_Guetta,_Sia_-_Beautiful_People_(Extended).mp3'),
+        (Path(path_anchor(None)).joinpath('mnt'), Path(path_anchor(None)).joinpath('Users', 'myname'), Path(path_anchor(None)).joinpath('mnt', 'Music', 'David Guetta', 'Beautiful People - Single/David_Guetta,_Sia_-_Beautiful_People_(Extended).mp3')),
+        (None, None, Path(path_anchor(None)).joinpath('Users', 'myname', 'Music', 'David Guetta', 'Beautiful People - Single/David_Guetta,_Sia_-_Beautiful_People_(Extended).mp3')),
+        (Path(path_anchor(None)).joinpath('mnt'), None, Path(path_anchor(None)).joinpath('mnt', 'Users', 'myname', 'Music', 'David Guetta', 'Beautiful People - Single/David_Guetta,_Sia_-_Beautiful_People_(Extended).mp3')),
+        (None, Path(path_anchor(None)).joinpath('Users', 'myname'), Path(path_anchor(None)).joinpath('Music', 'David Guetta', 'Beautiful People - Single/David_Guetta,_Sia_-_Beautiful_People_(Extended).mp3')),
     ])
     def test_traktor_adjust_location(self, anchor, rel, expected):
         assert self.e0 is not None
         result = adjust_location(get_location(self.e0), anchor, rel)
-        assert result.as_posix() == expected
+        assert result.as_posix() == expected.as_posix()
 
 
     def test_traktor_get_loudness(self):
