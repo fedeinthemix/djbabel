@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Federico Beffa <beffa@fbengineering.ch>
+# SPDX-FileCopyrightText: NONE
 #
 # SPDX-License-Identifier: CC0-1.0
 

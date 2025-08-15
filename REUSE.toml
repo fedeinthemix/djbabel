@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: NONE
+#
+# SPDX-License-Identifier: CC0-1.0
+
+version = 1
+
+[[annotations]]
+path = [
+     # Uncommentable files
+     ".gitignore",
+     "tests/audio/*",
+     "VERSION",
+     # Computer-generated files.
+     "tests/nml/test.nml",
+     "flake.lock",
+     ".gitlab-ci.yml",
+     "tests/subcrates/crate_write_test.crate"
+]
+SPDX-FileCopyrightText = "NONE"
+SPDX-License-Identifier = "CC0-1.0"

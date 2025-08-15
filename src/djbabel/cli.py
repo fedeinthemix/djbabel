@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Federico Beffa <beffa@fbengineering.ch>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Run as
 # python -m djbabel.cli -f sdjpro3 playlist.crate
 

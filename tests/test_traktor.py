@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: NONE
+#
+# SPDX-License-Identifier: CC0-1.0
+
 from datetime import date
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import pytest

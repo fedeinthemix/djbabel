@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: NONE
+#
+# SPDX-License-Identifier: CC0-1.0
+
 # In ipython run
 # %load_ext autoreload
 # %autoreload 2

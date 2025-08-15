@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Federico Beffa <beffa@fbengineering.ch>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 from datetime import date
 from pathlib import Path
 from enum import Enum, IntEnum, StrEnum, auto

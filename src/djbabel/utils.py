@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 Federico Beffa <beffa@fbengineering.ch>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 from basic_colormath import get_delta_e
 from dataclasses import replace
 from datetime import date

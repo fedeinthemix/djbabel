@@ -8,3 +8,5 @@ dist
 *~
 *.res
 doc/_build
+tests/Traktor_Playlists_Fede/*
+README.org
