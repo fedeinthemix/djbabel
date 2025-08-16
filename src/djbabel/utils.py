@@ -14,8 +14,22 @@ import os
 import re
 import typing
 import types
+import warnings
 
-from .types import AEncoderMode, AFormat, AMarkerColors, ASoftware, ASoftwareInfo, ATrack, ATransformation, AMarker, AMarkerType, AEncoder, AEncoderMode
+from .types import (
+    AudioFileInaccessibleWarning,
+    AEncoderMode,
+    AFormat,
+    AMarkerColors,
+    ASoftware,
+    ASoftwareInfo,
+    ATrack,
+    ATransformation,
+    AMarker,
+    AMarkerType,
+    AEncoder,
+    AEncoderMode
+)
 
 #########################################################################
 # Helper functions
@@ -29,6 +43,16 @@ def audio_file_type(audio: FileType) -> AFormat:
         return AFormat.M4A
     else:
         raise NotImplementedError("File format not supported")
+
+def file_size(audio: FileType) -> int | None:
+    if audio.filename is None:
+        s = None
+    else:
+        try:
+            s = os.path.getsize(audio.filename)
+        except FileNotFoundError:
+            s = None
+    return s
 
 def path_anchor(ancor: Path | None) -> Path:
     if ancor is None:
@@ -306,6 +330,22 @@ def audio_endocer(audio: FileType) -> AEncoder | None:
                 return None
         case _:
             raise ValueError(f'audio_encoder: file format not supported.')
+
+
+def maybe_audio(path: Path) -> FileType | None:
+    if path.exists() and path.is_file():
+        audio = mutagen.File(path, easy=False) # pyright: ignore
+        assert isinstance(audio, FileType)
+        return audio
+    else:
+        warnings.warn(
+            f"File {path} not found.\n"
+            f"For best Cue and beatgrid timing adjustment, djbabel needs access\n"
+            f"to the file (for reading).\n"
+            f"Further occurrences of similar messages will new be suppressed.",
+            AudioFileInaccessibleWarning
+        )
+        return None
 
 #######################################################################
 # Predicates

@@ -41,6 +41,7 @@ from ..utils import (
     path_anchor,
     get_leading_base64_part,
     closest_color_perceptual,
+    file_size,
     ms_to_s,
     audio_endocer,
     to_int
@@ -201,17 +202,6 @@ def release_date(audio: FileType):
 
 ###########################################################################
 # other metadata
-
-def file_size(audio: FileType) -> int | None:
-    if audio.filename is None:
-        s = None
-    else:
-        try:
-            s = os.path.getsize(audio.filename)
-        except FileNotFoundError:
-            s = None
-    return s
-
 
 def beatgrid(audio: FileType) -> list[ABeatGridBPM]:
     def from_serato(bg: list) -> list[ABeatGridBPM]:

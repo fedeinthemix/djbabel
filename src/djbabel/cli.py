@@ -11,6 +11,7 @@ from pathlib import Path
 import warnings
 
 from .types import (
+    AudioFileInaccessibleWarning,
     ASoftwareInfo,
     APlaylist,
     ASoftware,
@@ -40,6 +41,7 @@ def custom_formatwarning(message, _category, _filename, _lineno, _file=None, _li
 
 # Apply the custom formatter
 warnings.formatwarning = custom_formatwarning
+warnings.simplefilter('once', AudioFileInaccessibleWarning)
 
 #######################################################################
 # Helpers

@@ -33,6 +33,9 @@ from .utils import (
 from ..utils import (
     CLASSIC2OPEN_KEY_MAP,
     OPEN_KEY2MUSICAL_KEY_MAP,
+    audio_endocer,
+    file_size,
+    maybe_audio,
     normalize_time,
     inverse_dict,
     ms_to_s,
@@ -229,6 +232,9 @@ def get_str_attr(fn: str, entry: ET.Element) -> str | None:
 
 def from_traktor(entry: ET.Element, nml_version: int, anchor: Path | None = None, relative: Path | None = None) -> ATrack:
 
+    location = adjust_location(get_location(entry), anchor, relative)
+    audio = maybe_audio(location)
+
     return ATrack(
         title = get_str_attr('title', entry),
         artist = get_str_attr('artist', entry),
@@ -246,14 +252,14 @@ def from_traktor(entry: ET.Element, nml_version: int, anchor: Path | None = None
         comments = get_str_attr('comments', entry),
         rating = to_int(get_str_attr('rating', entry)),
         # Traktor gives an integer in kbytes. However, Rekordbox
-        # expects the numberof octets. For the moment we omit this
-        # piece of information. In the future we may get the accurate
-        # value from the file directly.
-        size = None, # to_int(get_str_attr('size', entry)) * 1000,
+        # expects the numberof octets. If we have access to the file,
+        # we determine the exact number, otherwise we let the target
+        # software determine it.
+        size = file_size(audio) if audio is not None else None,
         total_time = to_float(get_str_attr('total_time', entry)),
         bit_rate = to_int(get_str_attr('bit_rate', entry)),
         sample_rate = to_float(get_str_attr('sample_rate', entry)),
-        location = adjust_location(get_location(entry), anchor, relative),
+        location = location,
         aformat = aformat_from_path(get_location(entry)),
         beatgrid = get_cue_v2_beatgrid(entry),
         markers = get_cue_v2_cues(entry),
@@ -261,7 +267,9 @@ def from_traktor(entry: ET.Element, nml_version: int, anchor: Path | None = None
         color = None, # XXX extract track color
         average_bpm = to_float(get_str_attr('average_bpm', entry)),
         loudness = get_loudness(entry),
-        data_source = ADataSource(ASoftware.TRAKTOR, [nml_version], None),
+        data_source = ADataSource(ASoftware.TRAKTOR,
+                                  [nml_version],
+                                  audio_endocer(audio) if audio is not None else None),
         trackID = None, # XXX use AUDIO_ID?
         mix = None,
         date_added = to_date(get_str_attr('date_added', entry))

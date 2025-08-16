@@ -33,6 +33,7 @@ dev = ["pytest"]
 
 [tool.pytest.ini_options]
 pythonpath = "src"
+filterwarnings = ["ignore::UserWarning"]
 
 [project.scripts]
 djbabel = "djbabel.cli:main"

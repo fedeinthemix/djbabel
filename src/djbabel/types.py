@@ -9,6 +9,11 @@ from dataclasses import dataclass, field
 
 ###################################################################
 
+class AudioFileInaccessibleWarning(UserWarning):
+    pass
+
+###################################################################
+
 class AFormat(StrEnum):
     """Supported audio file formats.
     """
