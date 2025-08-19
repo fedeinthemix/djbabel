@@ -36,6 +36,7 @@
               mutagen
               pillow
               pytest
+              debugpy
             ]))
           ];
         };
