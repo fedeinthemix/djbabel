@@ -5,6 +5,8 @@
 import argparse
 from mutagen import MutagenError # pyright: ignore
 from pathlib import Path
+import re
+import sys
 import warnings
 
 from djbabel.types import (
@@ -20,7 +22,10 @@ from djbabel.serato import (
     to_serato_playlist
 )
 
-from djbabel.rekordbox import to_rekordbox_playlist
+from djbabel.rekordbox import (
+    to_rekordbox_playlist,
+    read_rekordbox_playlist
+)
 
 from djbabel.traktor import (
     to_traktor_playlist,
@@ -30,15 +35,21 @@ from djbabel.traktor import (
 #######################################################################
 # Warnings
 
-def custom_formatwarning(message, _category, _filename, _lineno, _file=None, _line=None) -> str:
-    """
-    A custom formatwarning function that only returns the warning message.
-    """
-    return f"Warning: {message}\n"
+seen_warnings = set()
+
+def custom_showwarning(message, category, filename, lineno, file=None, line=None):
+    pattern = re.compile(r"File.*", re.DOTALL)
+    output_file = file if file is not None else sys.stderr
+    if pattern.match(str(message)) and category is AudioFileInaccessibleWarning:
+        if category in seen_warnings:
+            return  # Already seen, so we return without showing the warning
+        seen_warnings.add(category)
+        print(f"Warning: {message}\n", file=output_file)
+    else:
+        print(f"Warning: {message}\n", file=output_file)
 
 # Apply the custom formatter
-warnings.formatwarning = custom_formatwarning
-warnings.simplefilter('once', AudioFileInaccessibleWarning)
+warnings.showwarning = custom_showwarning
 
 #######################################################################
 # Helpers
@@ -49,6 +60,8 @@ def parse_input_format(arg: str) -> ASoftwareInfo:
             return ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,3,2))
         case 'traktor4':
             return ASoftwareInfo(ASoftware.TRAKTOR, (4,2,0))
+        case 'rb7':
+            return ASoftwareInfo(ASoftware.REKORDBOX, (7,1,3))
         case _:
             raise ValueError(f'Input format {arg} not supported')
 
@@ -67,12 +80,14 @@ def parse_output_format(arg: str) -> ASoftwareInfo:
             raise ValueError(f'Output format {arg} not supported')
 
 
-def get_playlist(filepath: Path, trans: ATransformation, anchor: Path | None, relative: Path | None) -> APlaylist:
+def get_playlist(filepath: Path, trans: ATransformation, name: str | None, anchor: Path | None, relative: Path | None) -> APlaylist:
     match trans.source:
         case ASoftwareInfo(ASoftware.SERATO_DJ_PRO, _):
             return read_serato_playlist(filepath, trans, anchor, relative)
         case ASoftwareInfo(ASoftware.TRAKTOR, (4, _, _)):
-            return read_traktor_playlist(filepath, None, trans, anchor, relative)
+            return read_traktor_playlist(filepath, name, trans, anchor, relative)
+        case ASoftwareInfo(ASoftware.REKORDBOX, (7, _, _)):
+            return read_rekordbox_playlist(filepath, name, trans, anchor, relative)
         case _:
             raise ValueError(f'Source format {trans.source} not supported.')
 
@@ -133,7 +148,7 @@ def main():
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument("ifile", type=Path,
                         help="input playlist path")
-    parser.add_argument('-s', '--source', type=str, choices=['sdjpro', 'traktor4'],
+    parser.add_argument('-s', '--source', type=str, choices=['rb7', 'sdjpro', 'traktor4'],
                         default='sdjpro',
                         help='source playlist format')
     parser.add_argument('-t', '--target', type=str, choices=['rb7', 'traktor4', 'sdjpro'],
@@ -145,6 +160,8 @@ def main():
                         help='anchor for tracks in a playlist')
     parser.add_argument('-r', '--relative', type=Path,
                         help='make track paths in a playlist relative to this argument')
+    parser.add_argument('-n', '--playlist-name', type=str, default = '',
+                        help='Specify the name of the playlist (if different from the file name)')
     parser.add_argument('-w', '--overwrite-tags',
                         action='store_const', const='Y', default='n',
                         help="Overwrite the audio file metadata standard tags (title, ...). By default, only DJ software specific tags are overwritten. Use with 'Serato DJ Pro' as target ('sdjpro'))")
@@ -156,17 +173,18 @@ def main():
                                 target = parse_output_format(args.target))
         ifile = args.ifile
         ofile = output_filename(args.ofile, args.ifile, trans)
+        name = args.playlist_name if args.playlist_name != '' else None
 
-        playlist = get_playlist(ifile, trans, args.anchor, args.relative)
+        playlist = get_playlist(ifile, trans, name, args.anchor, args.relative)
         create_playlist(playlist, ofile, trans, args.overwrite_tags)
     except ValueError as err:
         print(f'{err}')
     except MutagenError as err:
-        print(f'Playlist track error: {err}')
+        print(f'djbabel: Playlist track error: {err}')
     except OSError as err:
-        print('OS error:', err)
+        print('djbabel: OS error:', err)
     except Exception as err:
-        print(f'Unexpected error: {err}')
+        print(f'djbabel: Unexpected error: {err}')
 
 if __name__ == "__main__":
     main()
