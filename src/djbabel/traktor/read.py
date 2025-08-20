@@ -10,7 +10,6 @@ import xml.etree.ElementTree as ET
 from ..types import (
     ABeatGridBPM,
     ADataSource,
-    AFormat,
     ALoudness,
     AMarker,
     APlaylist,
@@ -31,6 +30,8 @@ from .utils import (
 )
 
 from ..utils import (
+    adjust_location,
+    aformat_from_path,
     CLASSIC2OPEN_KEY_MAP,
     OPEN_KEY2MUSICAL_KEY_MAP,
     audio_endocer,
@@ -41,7 +42,6 @@ from ..utils import (
     ms_to_s,
     to_int,
     to_float,
-    path_anchor
 )
 
 ###################################################################
@@ -87,17 +87,6 @@ def to_bool(l: str | None) -> bool:
         return False
 
 
-def aformat_from_path(p: Path) -> AFormat:
-    match p.suffix.lower():
-        case '.mp3':
-            return AFormat.MP3
-        case '.flac':
-            return AFormat.FLAC
-        case '.m4a' | '.aac' | '.mp4':
-            return AFormat.M4A
-        case _:
-            raise ValueError(f"Audio format of {p} is not supported.")
-
 ########## ALBUM ######################
 
 get_album_subtag = make_get_subtag('./ALBUM')
@@ -130,11 +119,6 @@ def get_location(entry: ET.Element) -> Path:
         d = Path(d.replace('/:', '/'))
 
     return Path(vol) / d / name
-
-
-def adjust_location(loc: Path, anchor: Path | None = None, relative: Path | None = None) -> Path:
-    loc_rel = loc.relative_to(relative) if relative is not None else loc.relative_to(loc.anchor)
-    return path_anchor(anchor) / loc_rel
 
 
 ########## LOUDNESS ######################

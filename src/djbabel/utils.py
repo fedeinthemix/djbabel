@@ -7,7 +7,7 @@ from dataclasses import replace
 from datetime import date
 import mutagen.mp3
 from mutagen._file import FileType # pyright: ignore
-from pathlib import Path, PurePath, PosixPath, WindowsPath
+from pathlib import Path, PosixPath, WindowsPath
 
 import itertools
 import os
@@ -44,6 +44,17 @@ def audio_file_type(audio: FileType) -> AFormat:
     else:
         raise NotImplementedError("File format not supported")
 
+def aformat_from_path(p: Path) -> AFormat:
+    match p.suffix.lower():
+        case '.mp3':
+            return AFormat.MP3
+        case '.flac':
+            return AFormat.FLAC
+        case '.m4a' | '.aac' | '.mp4':
+            return AFormat.M4A
+        case _:
+            raise ValueError(f"Audio format of {p} is not supported.")
+
 def file_size(audio: FileType) -> int | None:
     if audio.filename is None:
         s = None
@@ -65,6 +76,10 @@ def path_anchor(ancor: Path | None) -> Path:
                 raise ValueError(f'OS {os.name} not supported')
     else:
         return ancor
+
+def adjust_location(loc: Path, anchor: Path | None = None, relative: Path | None = None) -> Path:
+    loc_rel = loc.relative_to(relative) if relative is not None else loc.relative_to(loc.anchor)
+    return path_anchor(anchor) / loc_rel
 
 def ms_to_s(x):
     """Milli-seconds to seconds

@@ -1018,6 +1018,31 @@ audio_pif = mutagen.File(file_pif, easy=False)
 # audio_flac_ref = mutagen.File(file_flac_ref, easy=False) # pyright: ignore
 # audio_m4a_ref = mutagen.File(file_m4a_ref, easy=False) # pyright: ignore
 
+##########################################################
+# RekordBox read
+
+from datetime import datetime
+from djbabel.rekordbox.read import read_rekordbox_playlist, get_color
+from urllib.request import url2pathname
+from urllib.parse import urlparse
+from djbabel.serato.read import parse_color
+
+trans = ATransformation(parse_input_format('traktor4'),
+                        parse_output_format('traktor4'))
+
+rb_file = Path('rb7xml/test.xml')
+rb_tree = ET.parse(rb_file)
+
+relative = Path('/C:/Users/beffa/src/djbabel/tests/')
+apl = read_rekordbox_playlist(rb_file, "my_playlist", trans, Path(''), relative)
+
+url = "file://localhost/C%3A/Users/beffa/src/djbabel/tests/audio/The_Todd_Terry_Project_-_Weekend-reencoded_with_lame.mp3"
+
+url2pathname(url)
+
+parsed_url = urlparse(url)
+
+url2pathname(parsed_url.path)
 
 ##########################################################
 
