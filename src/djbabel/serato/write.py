@@ -390,7 +390,7 @@ def ask_to_overwrite(tag: str, path: Path) -> str:
     while True:
         overwrite = input(f'{path}: Overwrite tag {tag} (y/[n]/Y/N)? ')
         if overwrite not in ['y', 'n', 'Y', 'N']:
-            print(f"Please answer 'n' for NO, 'y' for YES, 'N' for NO to all, or 'Y' for YES to all.\n")
+            print(f"Please answer 'n' for NO, 'y' for YES, 'N' for NO to all std tags, or 'Y' for YES to all.\n")
         else:
             return overwrite
 
@@ -398,7 +398,8 @@ def ask_to_overwrite(tag: str, path: Path) -> str:
 def handle_existing_tag(tag: str, tags: dict, overwrite: str, location: Path) -> tuple[Action, str]:
     if tag in tags and overwrite != 'Y':
         if overwrite == 'N':
-            return "break", overwrite
+            # 'break' would skip tags that are not in the file yet.
+            return "continue", overwrite
         else:
             ow = ask_to_overwrite(tag, location)
             if ow in ['Y', 'N']:

@@ -147,7 +147,7 @@ def main():
                         help='make track paths in a playlist relative to this argument')
     parser.add_argument('-w', '--overwrite-tags',
                         action='store_const', const='Y', default='n',
-                        help="Overwrite the audio file metadata tags. Use with 'Serato DJ Pro' as target ('sdjpro'))")
+                        help="Overwrite the audio file metadata standard tags (title, ...). By default, only DJ software specific tags are overwritten. Use with 'Serato DJ Pro' as target ('sdjpro'))")
 
     args = parser.parse_args()
 
