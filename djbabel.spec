@@ -1,5 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+# SPDX-FileCopyrightText: NONE
+#
+# SPDX-License-Identifier: CC0-1.0
 
 a = Analysis(
     ['src/djbabel/cli.py'],
