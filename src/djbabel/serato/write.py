@@ -7,12 +7,13 @@ from datetime import date
 import io
 import mutagen
 import mutagen.id3
+import mutagen.mp3
 from mutagen.id3 import Frame, GEOB, Encoding # pyright: ignore
 from mutagen.mp4 import AtomDataType, MP4FreeForm
 from mutagen._file import FileType # pyright: ignore
 from pathlib import Path
 import struct
-from typing import Literal
+from typing import Literal, Callable, TypeVar, Optional
 import warnings
 
 from .analysis import Analysis
@@ -32,7 +33,7 @@ from ..types import (
     APlaylist,
 )
 from .types import SeratoTags
-from ..utils import s_to_ms, audio_file_type
+from ..utils import s_to_ms
 from .utils import (
     pack_color,
     FMT_VERSION,
@@ -511,7 +512,8 @@ def split_tag_name(tag: str) -> tuple[str, str, str]:
         raise ValueError(f"split_tag_name: unexpected tag {tag}")
 
 
-def add_serato_tag(at, audio, overwrite, stag, to_low, dump):
+A = TypeVar('A')
+def add_serato_tag(at: ATrack, audio: FileType, stag: SeratoTags, to_low: Callable[[ATrack], Optional[A]], dump: Callable[[A], bytes]) -> FileType:
     tag = stag.value.names[at.aformat]
     low = to_low(at)
     if low != [] and low is not None:
@@ -523,6 +525,9 @@ def add_serato_tag(at, audio, overwrite, stag, to_low, dump):
                              mime="application/octet-stream",
                              desc=tag_desc,
                              data=data)
+                if audio.tags is None:
+                    assert isinstance(audio, mutagen.mp3.MP3)
+                    audio.tags = mutagen.id3.ID3()
                 audio.tags.add(frame)
             case AFormat.FLAC:
                 audio[tag] = add_envelope(data, stag).decode('ascii')
@@ -530,7 +535,7 @@ def add_serato_tag(at, audio, overwrite, stag, to_low, dump):
                 audio[tag] = MP4FreeForm(data=add_envelope(data, stag))
             case _:
                 raise ValueError(f"add_serato_markers: file format {at.aformat} not supported")            
-    return audio, overwrite
+    return audio
 
 #########################################################################
 #### Main ####
@@ -560,26 +565,26 @@ def to_serato(at: ATrack, trans: ATransformation, overwrite: str = 'n') -> str:
         # XXX play_count (tag 'TXXX:SERATO_PLAYCOUNT'): encoding not
         # reverse engineered.
 
-        audio, overwrite = add_serato_tag(at, audio, overwrite,
-                                          SeratoTags.MARKERS,
-                                          to_serato_markers,
-                                          lambda es: dump_serato_markers(es, at.aformat))
-        audio, overwrite = add_serato_tag(at, audio, overwrite,
-                                          SeratoTags.MARKERS2,
-                                          to_serato_markers_v2,
-                                          dump_serato_markers_v2)
-        audio, overwrite = add_serato_tag(at, audio, overwrite,
-                                          SeratoTags.BEATGRID,
-                                          to_serato_beatgrid,
-                                          dump_serato_beatgrid)
-        audio, overwrite = add_serato_tag(at, audio, overwrite,
-                                          SeratoTags.ANALYSIS,
-                                          to_serato_analysis,
-                                          dump_serato_analysis)
-        audio, overwrite = add_serato_tag(at, audio, overwrite,
-                                          SeratoTags.AUTOTAGS,
-                                          to_serato_autotags,
-                                          dump_serato_autotags)
+        audio = add_serato_tag(at, audio,
+                               SeratoTags.MARKERS,
+                               to_serato_markers,
+                               lambda es: dump_serato_markers(es, at.aformat))
+        audio = add_serato_tag(at, audio,
+                               SeratoTags.MARKERS2,
+                               to_serato_markers_v2,
+                               dump_serato_markers_v2)
+        audio = add_serato_tag(at, audio,
+                               SeratoTags.BEATGRID,
+                               to_serato_beatgrid,
+                               dump_serato_beatgrid)
+        audio = add_serato_tag(at, audio,
+                               SeratoTags.ANALYSIS,
+                               to_serato_analysis,
+                               dump_serato_analysis)
+        audio = add_serato_tag(at, audio,
+                               SeratoTags.AUTOTAGS,
+                               to_serato_autotags,
+                               dump_serato_autotags)
     finally:
         audio.save()
     return overwrite
