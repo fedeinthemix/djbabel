@@ -2,15 +2,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# Run as
-# python -m djbabel.cli -f sdjpro3 playlist.crate
-
 import argparse
 from mutagen import MutagenError # pyright: ignore
 from pathlib import Path
 import warnings
 
-from .types import (
+from djbabel.types import (
     AudioFileInaccessibleWarning,
     ASoftwareInfo,
     APlaylist,
@@ -18,14 +15,14 @@ from .types import (
     ATransformation
 )
 
-from .serato import (
+from djbabel.serato import (
     read_serato_playlist,
     to_serato_playlist
 )
 
-from .rekordbox import to_rekordbox_playlist
+from djbabel.rekordbox import to_rekordbox_playlist
 
-from .traktor import (
+from djbabel.traktor import (
     to_traktor_playlist,
     read_traktor_playlist
 )

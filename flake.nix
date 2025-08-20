@@ -32,11 +32,12 @@
           packages = [
             (pkgs.${system}.python3.withPackages (ps: with ps; [
               self.packages.${system}.basic-colormath
+              debugpy
               ipython
               mutagen
               pillow
+              pyinstaller
               pytest
-              debugpy
             ]))
           ];
         };
@@ -50,6 +51,7 @@
               self.packages.${system}.basic-colormath
               mutagen
               pillow # only used in ./src/djbabel/serato/overview.py
+              pyinstaller
               pytest
             ]))
           ];
