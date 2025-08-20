@@ -65,6 +65,16 @@ def file_size(audio: FileType) -> int | None:
             s = None
     return s
 
+def audio_length(audio: FileType | None) -> float | None:
+    if (audio is not None and
+        hasattr(audio, 'info') and
+        hasattr(audio.info, 'length') and
+        audio.info is not None
+        ):
+        return audio.info.length
+    else:
+        return None
+
 def path_anchor(ancor: Path | None) -> Path:
     if ancor is None:
         match os.name:
@@ -90,6 +100,9 @@ def s_to_ms(x):
     """Seconds to milli-seconds
     """
     return x*1000
+
+def kbps_to_bps(x):
+    return x*1000 if x is not None else None
 
 def to_int(x: str | None) -> int:
     if x is not None and x.isnumeric():

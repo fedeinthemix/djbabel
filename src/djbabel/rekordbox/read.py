@@ -28,7 +28,11 @@ from ..utils import (
     adjust_location,
     aformat_from_path,
     audio_endocer,
+    audio_file_type,
+    audio_length,
     closest_color_perceptual,
+    file_size,
+    kbps_to_bps,
     inverse_dict,
     maybe_audio,
     normalize_time,
@@ -160,12 +164,12 @@ def from_rekordbox(entry: ET.Element, rb_version: list[int], anchor: Path | None
         label = get_tag_attr('label', entry),
         comments = get_tag_attr('comments', entry),
         rating = to_int(get_tag_attr('rating', entry)),
-        size = None, # inaccurate, left to the target to find out.
-        total_time = None, # inaccurate, left to the target to find out.
-        bit_rate = to_int(get_tag_attr('bit_rate', entry)) * 1000,
+        size = file_size(audio) if audio is not None else None,
+        total_time = audio_length(audio),
+        bit_rate = kbps_to_bps(to_int(get_tag_attr('bit_rate', entry))),
         sample_rate = to_float(get_tag_attr('sample_rate', entry)),
         location = location,
-        aformat = aformat_from_path(location),
+        aformat = audio_file_type(audio) if audio is not None else aformat_from_path(location),
         beatgrid = get_beatgrid(entry),
         markers = get_markers(entry),
         locked = False, # no 'locked' entry

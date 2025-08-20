@@ -32,6 +32,7 @@ from .utils import (
 from ..utils import (
     adjust_location,
     aformat_from_path,
+    audio_file_type,
     CLASSIC2OPEN_KEY_MAP,
     OPEN_KEY2MUSICAL_KEY_MAP,
     audio_endocer,
@@ -244,7 +245,7 @@ def from_traktor(entry: ET.Element, nml_version: int, anchor: Path | None = None
         bit_rate = to_int(get_str_attr('bit_rate', entry)),
         sample_rate = to_float(get_str_attr('sample_rate', entry)),
         location = location,
-        aformat = aformat_from_path(get_location(entry)),
+        aformat = audio_file_type(audio) if audio is not None else aformat_from_path(get_location(entry)),
         beatgrid = get_cue_v2_beatgrid(entry),
         markers = get_cue_v2_cues(entry),
         locked = to_bool(get_str_attr('locked', entry)),

@@ -38,6 +38,7 @@ from .utils import (
 )
 
 from ..utils import (
+    audio_length,
     path_anchor,
     get_leading_base64_part,
     closest_color_perceptual,
@@ -320,7 +321,7 @@ def from_serato(audio: FileType) -> ATrack:
         comments = std_comments_tag(audio),
         rating = None, # Serato doens't have a rating or star feature.
         size = file_size(audio),
-        total_time = audio.info.length, # pyright: ignore
+        total_time = audio_length(audio),
         bit_rate = bitrate(audio),
         sample_rate = samplerate(audio),
         location = location(audio),
