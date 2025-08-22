@@ -201,43 +201,53 @@ def mp3_beatgrid_offset(encoder: AEncoder | None) -> float:
             return -0.016
 
 
-def beatgrid_offset(at: ATrack, trans: ATransformation) -> float:
+def beatgrid_offset(at: ATrack, trans: ATransformation, offset_sign: int) -> float:
     """BeatGrid offset relative to Serato DJ Pro 3.3.2 in seconds.
 
-    dt = t_target - t_serato_dj_pro
+    Args:
+      offset_sign: 1 -> dt = t_target - t_serato_dj_pro, -1 -> dt = -1 * (t_source - t_serato_dj_pro)
     """
-    match trans.target:
+    assert offset_sign == 1 or offset_sign == -1, f"beatgrid_offset: offset_sign must be 1 or -1, got {offset_sign}"
+
+    if offset_sign == -1:
+        tgt_or_src = trans.source
+    else:
+        tgt_or_src = trans.target
+
+    match tgt_or_src:
         case ASoftwareInfo(ASoftware.SERATO_DJ_PRO, _):
             # Serato DJ Pro is currently used as reference.
-            return 0.0
+            return offset_sign * 0.0
         case ASoftwareInfo(ASoftware.REKORDBOX, _):
             match at.aformat:
                 case AFormat.M4A:
-                    return 0.046
+                    return offset_sign * 0.046
                 case AFormat.MP3:
-                    return mp3_beatgrid_offset(at.data_source.encoder)
+                    return offset_sign * mp3_beatgrid_offset(at.data_source.encoder)
                 case _:
                     # LOSSLESS formats are not shifted
-                    return 0.0
+                    return offset_sign * 0.0
         case ASoftwareInfo(ASoftware.TRAKTOR, _):
             match at.aformat:
                 case AFormat.M4A:
-                    return 0.0
+                    return offset_sign * 0.0
                 case AFormat.MP3:
-                    return 0.0
+                    return offset_sign * 0.0
                 case _:
                     # LOSSLESS formats are not shifted
-                    return 0.0
+                    return offset_sign * 0.0
         case _:
             raise ValueError(f'{trans.target.software} currently not supported.')
 
-def marker_offset(at: ATrack, trans: ATransformation) -> float:
+
+def marker_offset(at: ATrack, trans: ATransformation, offset_sign: int) -> float:
     """Marker offset relative to Serato DJ Pro 3.3.2 in seconds.
 
-    dt = t_target - t_serato_dj_pro
+    Args:
+      offset_sign: 1 -> dt = t_target - t_serato_dj_pro, -1 -> dt = -1 * (t_source - t_serato_dj_pro)
     """
     # Currently we don't observe difference from beatgrid.
-    return beatgrid_offset(at, trans)
+    return beatgrid_offset(at, trans, offset_sign)
 
 
 def adjust_time(at: ATrack, trans: ATransformation, offset_sign: int) -> ATrack:
@@ -251,13 +261,13 @@ def adjust_time(at: ATrack, trans: ATransformation, offset_sign: int) -> ATrack:
     Returns:
       The audio track information 'at' with beatgrid and markers timing adjusted.
     """
-    m_offset = offset_sign * marker_offset(at, trans)
+    m_offset = marker_offset(at, trans, offset_sign)
     new_markers = []
     for m in at.markers:
         new_start = m.start + m_offset
         new_end = (m.end + m_offset) if m.end is not None else None
         new_markers = new_markers + [replace(m, start=new_start, end=new_end)]
-    bg_offset = offset_sign * beatgrid_offset(at, trans)
+    bg_offset = beatgrid_offset(at, trans, offset_sign)
     new_beatgrid = []
     for bg in at.beatgrid:
         new_position = bg.position + bg_offset
