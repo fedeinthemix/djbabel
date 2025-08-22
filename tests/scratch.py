@@ -1036,14 +1036,6 @@ rb_tree = ET.parse(rb_file)
 relative = Path('/C:/Users/beffa/src/djbabel/tests/')
 apl = read_rekordbox_playlist(rb_file, "my_playlist", trans, Path(''), relative)
 
-url = "file://localhost/C%3A/Users/beffa/src/djbabel/tests/audio/The_Todd_Terry_Project_-_Weekend-reencoded_with_lame.mp3"
-
-url2pathname(url)
-
-parsed_url = urlparse(url)
-
-url2pathname(parsed_url.path)
-
 ##########################################################
 
 # Local Variables:

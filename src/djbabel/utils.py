@@ -298,11 +298,11 @@ def reindex_sdjpro_loops(markers: list[AMarker], trans: ATransformation) -> list
     On DJM-S11 you can call up to 16 Hot Cues by pressing the PADS
     (two pages). CDJ-3000 only support 8 Hot Cues.
 
-    To accomodate both devices if the number of CUEs + LOOPs <= 8 we
+    To accomodate both devices if max_index(CUEs) + 1 + no. LOOPs <= 8 we
     store the loops at index 8 - (no. LOOPs) to 7.
 
-    If CUEs + LOOPs > 8 we store them sequentially, some of them
-    will not be usable on CDJ-3000.
+    If max_index(CUEs) + 1 + no. LOOPs > 8 we store them sequentially, some
+    of them will not be usable on CDJ-3000.
     """
     new_markers = []
     match trans.source.software:
@@ -311,14 +311,16 @@ def reindex_sdjpro_loops(markers: list[AMarker], trans: ATransformation) -> list
             cues = list(filter(
                 lambda m: m.kind == AMarkerType.CUE or m.kind == AMarkerType.CUE_LOAD,
                 markers))
+            max_cue_idx = max(map(lambda m: m.index, cues))
             loops = list(filter(lambda m: m.kind == AMarkerType.LOOP, markers))
-            if len(cues) + len(loops) <= 8:
+            if max_cue_idx + 1 + len(loops) <= 8:
                 i = 8-len(loops)
             else:
-                i = len(cues)
+                warnings.warn(f"Some LOOPs with have an index greater than 8.")
+                i = max_cue_idx + 1
             new_markers = cues
-            for m in loops:
-                new_markers = new_markers + [replace(m, index = i + m.index)]
+            for j,m in enumerate(loops):
+                new_markers = new_markers + [replace(m, index = i + j)]
         case _:
             new_markers = markers
     return new_markers
