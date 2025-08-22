@@ -288,7 +288,7 @@ def normalize_time(at: ATrack, trans: ATransformation) -> ATrack:
     return adjust_time(at, trans, -1)
     
 
-def reindex_sdjpro_loops(markers: list[AMarker], trans: ATransformation) -> list[AMarker]:
+def reindex_sdjpro_loops(markers: list[AMarker], trans: ATransformation, max_no_markers: int) -> list[AMarker]:
     """Reindex Serato DJ Pro loops.
 
     In Serato loop indexes are independent from cue ones.
@@ -319,8 +319,13 @@ def reindex_sdjpro_loops(markers: list[AMarker], trans: ATransformation) -> list
                 warnings.warn(f"Some LOOPs with have an index greater than 8.")
                 i = max_cue_idx + 1
             new_markers = cues
-            for j,m in enumerate(loops):
-                new_markers = new_markers + [replace(m, index = i + j)]
+            for j, m in enumerate(loops):
+                idx = i + j
+                if idx >= max_no_markers:
+                    warnings.warn(f"Cue max index + no. loops >= {max_no_markers}."
+                                  f"Some cues/loops will be lost!")
+                    break
+                new_markers = new_markers + [replace(m, index = idx)]
         case _:
             new_markers = markers
     return new_markers

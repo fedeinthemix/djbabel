@@ -219,7 +219,7 @@ def to_rekordbox(at: ATrack, tid: int, trans: ATransformation) -> ET.Element:
     attrs = dict(reduce(lambda acc, f: acc + rb_attr(at, f, tid),  fs, []))
     trk = ET.Element("TRACK", **attrs)
     new_at = adjust_time_to_target(at, trans)
-    for m in reindex_sdjpro_loops(new_at.markers, trans):
+    for m in reindex_sdjpro_loops(new_at.markers, trans, 16):
         trk.append(rb_position_mark(m))
     for i, m in enumerate(new_at.beatgrid):
         battito = rb_battito(new_at.beatgrid, i)
