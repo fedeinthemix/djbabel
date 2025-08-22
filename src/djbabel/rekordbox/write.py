@@ -150,10 +150,18 @@ def rb_marker_color(c: AMarkerColors) -> tuple[int,int,int]:
         case AMarkerColors.HOT_PING:
             return (255, 18, 123)
 
+def rb_position_mark_type(ty: AMarkerType) -> str:
+    # In rekordbox 7 "Load" cues were removed. They were replaced by the
+    # load option to start a track at the cue nearest to the start.
+    if ty == AMarkerType.CUE_LOAD:
+        return REKORDBOX_MARKERTYPE_MAP[AMarkerType.CUE]
+    else:
+        return REKORDBOX_MARKERTYPE_MAP[ty]
+
 def rb_position_mark(m: AMarker) -> ET.Element:
     attrs = {
         'Name'  : m.name,
-        'Type'  : REKORDBOX_MARKERTYPE_MAP[m.kind],
+        'Type'  : rb_position_mark_type(m.kind),
         'Start' : str(m.start),
         'End'   : str(m.end)  if m.end is not None else "",
         # rekordbox : Hot Cue A, B, C : "0", "1", "2"; Memory Cue : "-1"
