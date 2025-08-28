@@ -5,13 +5,52 @@
 from datetime import date
 from pathlib import Path, PureWindowsPath
 import pytest
+import xml.etree.ElementTree as ET
 
-from djbabel.rekordbox.write import rb_attr_color, rb_attr_location, rb_attr_rating, rb_attr_tonality, rb_battito, rb_marker_color, rb_position_mark, to_rekordbox
-from djbabel.types import AMarker, AMarkerColors, ASoftwareInfo, ASoftware, ATransformation, AMarkerType, ABeatGridBPM
+from djbabel.rekordbox.write import (
+    rb_attr_color,
+    rb_attr_location,
+    rb_attr_rating,
+    rb_attr_tonality,
+    rb_battito,
+    rb_marker_color,
+    rb_position_mark,
+    to_rekordbox
+)
+
+from djbabel.rekordbox.types import RBPlaylistKeyType
+
+from djbabel.rekordbox.read import(
+    find_collection_entry,
+    get_tag_attr,
+    get_tonality,
+    file_size,
+    audio_length,
+    get_beatgrid,
+    get_markers,
+    get_color,
+    get_playlist_key_type,
+    get_rb_location,
+    read_rekordbox_playlist
+)
+
+from djbabel.types import (
+    AMarker,
+    AMarkerColors,
+    ASoftwareInfo,
+    ASoftware,
+    ATransformation,
+    AMarkerType,
+    ABeatGridBPM
+)
+
+from djbabel.utils import (
+    path_anchor,
+)
 
 ###############################################################
 
-class TestRekordbox:
+class TestRekordboxWriteTags:
 
     trans = ATransformation(ASoftwareInfo(ASoftware.SERATO_DJ_PRO, (3,2,3)),
                             ASoftwareInfo(ASoftware.REKORDBOX, (7,1,3)))
@@ -151,3 +190,125 @@ class TestRekordbox:
                                                 'Battito': '1'}
                 case _:
                     assert False
+
+###############################################################
+# Read XML files
+
+class TestRekordboxReadTags:
+
+    trans = ATransformation(ASoftwareInfo(ASoftware.REKORDBOX, (7,1,3)),
+                            ASoftwareInfo(ASoftware.TRAKTOR, (4,2,0)))
+
+
+    xml_path = Path('tests') / 'rb7xml' / 'rbxml_test.xml'
+    root = ET.parse(xml_path).getroot()
+    col = root.find('COLLECTION')
+    assert col is not None
+    pls = root.findall('.//NODE[@Type="1"]')
+    pl = list(filter(lambda pl: pl.attrib['Name'] == 'rbxml_test', pls))[0]
+    pl_keys = pl.findall('./TRACK')
+    e0 = find_collection_entry(col, pl_keys[0].get('Key'), RBPlaylistKeyType.TRACK_ID)
+    e1 = find_collection_entry(col, pl_keys[1].get('Key'), RBPlaylistKeyType.TRACK_ID)
+
+
+    @pytest.mark.parametrize("fn, expected", [
+        ('title', "Weekend (Original Mix)"),
+        ('genre', "House"),
+        ('not_defined', None),
+        ('', None),
+    ])
+    def test_rekordbox_get_tag_attr(self, fn, expected):
+        assert self.e0 is not None
+        result = get_tag_attr(fn, self.e0)
+        assert result == expected
+
+
+    def test_rekordbox_get_tonality(self):
+        assert self.e0 is not None
+        result = get_tonality(self.e0)
+        assert result == 'Bbmaj'
+
+
+    def test_rekordbox_get_location(self):
+        assert self.e0 is not None
+        result = get_rb_location(self.e0)
+        assert result.as_posix() == path_anchor(None).as_posix() + 'tests/audio/crate_write_test.mp3'
+
+
+    def test_rekordbox_get_beatgrid(self):
+        assert self.e0 is not None
+        result = get_beatgrid(self.e0)
+        assert result == [
+            ABeatGridBPM(
+                position=5.803330421447754,
+                bpm=122.81898268224539,
+                metro=(4,4),
+            ),
+            ABeatGridBPM(
+                position=154.3145751953125,
+                bpm=122.9070816040039,
+                metro=(4,4),
+            ),
+        ]
+
+
+    def test_rekordbox_get_markers(self):
+        assert self.e0 is not None
+        result = get_markers(self.e0)
+        assert result == [
+            AMarker(name='intro',
+                    color=AMarkerColors.MAGENTA,
+                    start=0.25,
+                    end=None,
+                    kind=AMarkerType.CUE,
+                    index=0,
+                    locked=False),
+            AMarker(
+                name='16',
+                color=AMarkerColors.DARK_GREEN,
+                start=5.81,
+                end=None,
+                kind=AMarkerType.CUE,
+                index=1,
+                locked=False,
+            ),
+            AMarker(
+                name='tonoght the night',
+                color=AMarkerColors.RED_ORANGE,
+                start=154.314,
+                end=None,
+                kind=AMarkerType.CUE,
+                index=2,
+                locked=False,
+            ),
+            AMarker(
+                name='3 x 32',
+                color=AMarkerColors.RED,
+                start=185.557,
+                end=None,
+                kind=AMarkerType.CUE,
+                index=3,
+                locked=False,
+            ),
+            AMarker(
+                name='',
+                color=AMarkerColors.SKY_BLUE,
+                start=201.165,
+                end=216.791,
+                kind=AMarkerType.LOOP,
+                index=7,
+                locked=False,
+            ),
+        ]
+
+
+    def test_rekordbox_read_playlist(self):
+        assert self.e0 is not None
+        result = read_rekordbox_playlist(self.xml_path, None, self.trans)
+        assert result.entries == 3
+        assert result.name == 'rbxml_test'
+        assert list(map(lambda at: at.title, result.tracks)) == [
+            'Weekend (Original Mix)',
+            'Pump Up The Volume',
+            'Go',
+        ]

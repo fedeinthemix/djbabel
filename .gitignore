@@ -10,4 +10,5 @@ build
 *.res
 doc/_build
 tests/Traktor_Playlists_Fede/*
+tests/subcrates/crate_write_test.crate
 README.org
