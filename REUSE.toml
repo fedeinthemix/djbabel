@@ -12,6 +12,7 @@ path = [
      "VERSION",
      # Computer-generated files.
      "tests/nml/test.nml",
+     "tests/rb7xml/rbxml_test.xml",
      "flake.lock",
      ".gitlab-ci.yml",
      "tests/subcrates/crate_write_test.crate"

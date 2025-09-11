@@ -24,7 +24,7 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
 ]
-keywords = ["DJ", "Serato", "Serato DJ Pro", "RekordBox", "Traktor Pro 4"]
+keywords = ["DJ", "Serato", "Serato DJ Pro", "rekordbox", "Traktor Pro 4"]
 
 dynamic = ["version"]
 
@@ -48,8 +48,7 @@ include = ["/src/djbabel"]
 packages = ["src/djbabel"]
 
 [tool.hatch.version]
-path = "VERSION"
-pattern = "(?P<version>[^']+)"
+path = "src/djbabel/version.py"
 
 [project.urls]
 Homepage = "https://gitlab.com/fbengineering/djbabel"

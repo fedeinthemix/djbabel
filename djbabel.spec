@@ -4,6 +4,10 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
+import os
+
+binary_name = os.getenv("PYINSTALLER_NAME", "djbabel")
+
 a = Analysis(
     ['src/djbabel/cli.py'],
     pathex=[],
@@ -25,7 +29,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='djbabel',
+    name=binary_name,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

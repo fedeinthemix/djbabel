@@ -9,6 +9,8 @@ import re
 import sys
 import warnings
 
+from djbabel.version import __version__
+
 from djbabel.types import (
     AudioFileInaccessibleWarning,
     ASoftwareInfo,
