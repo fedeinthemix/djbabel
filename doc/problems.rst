@@ -11,7 +11,7 @@ Converting from Serato DJ Pro
 HotCue Shift
 ~~~~~~~~~~~~
 
-In rare cases, some hotcues may be appear shifted in other target software. In my experience, deleting and restoring the hotcue in Serato DJ Pro fixes the problem (even if it appears to make no difference in Serato DJ Pro).
+In rare cases, some hotcues may appear shifted in other target software. In my experience, deleting and restoring the hotcue in Serato DJ Pro fixes the problem (even if it appears to make no difference in Serato DJ Pro).
 
 Incorrect Initial Part of Beatgrid
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

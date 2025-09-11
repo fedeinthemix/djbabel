@@ -10,7 +10,7 @@
 DJBabel Documentation
 ======================
 
-A Python library to convert DJ playlists between
+A program and Python library to convert DJ playlists between
 
 * Serato DJ Pro
 * rekordbox,
@@ -21,7 +21,7 @@ A Python library to convert DJ playlists between
    :caption: Contents:
 
    intro
-   serato
+   use
    problems
 
 ..  LocalWords:  Serato Traktor rekordbox
