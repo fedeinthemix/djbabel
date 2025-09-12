@@ -12,7 +12,11 @@ basic-colormath,
 
 python3Packages.buildPythonPackage rec {
   pname = "djbabel";
-  version = builtins.readFile ./VERSION;
+  version = with builtins;
+    elemAt
+      (match ''__version__ *= *['"](.*)['"].*''
+        (readFile ./src/djbabel/version.py))
+      0;
   pyproject = true;
 
   src = ./.;
