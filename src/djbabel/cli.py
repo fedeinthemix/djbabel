@@ -126,14 +126,14 @@ def output_filename(ofile: Path | None, ifile: Path, trans: ATransformation) -> 
 # Main
 
 def main():
-    desc = """DJ Software playlists convertion tool.
+    desc = """DJ software playlists convertion tool.
 
-    djbabel converts playlists between various DJ programs, currently
-    Serato DJ Pro and Rekordbox. Some playlist formats, such as Crates
-    in Serato DJ Pro, store file path without the anchor (the
-    concatenation of the drive and root). In this case, djbabel
-    assumes 'C:\\' on Windows and '/' on POSIX systems. If this is not
-    correct, you have to specify it with the '--anchor' option.
+    djbabel converts playlists between various DJ programs. Some
+    playlist formats, such as Crates in Serato DJ Pro, store file path
+    without the anchor (the concatenation of the drive and root). In
+    this case, djbabel assumes 'C:\\' on Windows and '/' on POSIX
+    systems. If this is not correct, you have to specify it with the
+    '--anchor' option.
 
     The option '--relative' can be used to strip part of the leading
     path of the audio file paths in the playlist. For example, if you
@@ -167,6 +167,7 @@ def main():
     parser.add_argument('-w', '--overwrite-tags',
                         action='store_const', const='Y', default='n',
                         help="Overwrite the audio file metadata standard tags (title, ...). By default, only DJ software specific tags are overwritten. Use with 'Serato DJ Pro' as target ('sdjpro'))")
+    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}')
 
     args = parser.parse_args()
 
