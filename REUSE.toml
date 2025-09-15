@@ -14,8 +14,8 @@ path = [
      "tests/nml/test.nml",
      "tests/rb7xml/rbxml_test.xml",
      "flake.lock",
-     ".gitlab-ci.yml",
-     "tests/subcrates/crate_write_test.crate"
+     ".github/workflows/build.yml",
+     "tests/subcrates/crate_write_test.crate",
 ]
 SPDX-FileCopyrightText = "NONE"
 SPDX-License-Identifier = "CC0-1.0"

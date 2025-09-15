@@ -14,7 +14,7 @@ python3Packages.buildPythonPackage rec {
   pname = "djbabel";
   version = with builtins;
     elemAt
-      (match ''__version__ *= *['"](.*)['"].*''
+      (match ''.*__version__ *= *['"](.*)['"].*''
         (readFile ./src/djbabel/version.py))
       0;
   pyproject = true;
