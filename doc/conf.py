@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path('..', 'src').resolve()))
 # Work around nixpkgs bug
 # https://github.com/sphinx-doc/sphinx/issues/3451
 import os
-del os.environ['SOURCE_DATE_EPOCH']
+os.environ.pop('SOURCE_DATE_EPOCH', None)
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

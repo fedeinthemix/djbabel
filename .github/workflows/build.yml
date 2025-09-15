@@ -22,15 +22,59 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install hatch and create environment
+      - name: Install hatch
         run: |
           python -m pip install --upgrade pip
-          pip install hatch pytest
-          hatch env create
+          pip install hatch
 
       - name: Run tests
         run: |
-          hatch run pytest --maxfail=1 --disable-warnings -q
+          hatch test
+
+
+  docs:
+    name: Build Docs
+    runs-on: ubuntu-latest
+    needs: test  # Only run docs after tests pass
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch
+
+      - name: Build HTML docs with Sphinx
+        working-directory: ./doc
+        run: hatch run docs:make html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: doc/_build/html
+
+
+  deploy-pages:
+    name: Deploy Docs to Pages
+    runs-on: ubuntu-latest
+    needs: docs
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
 
   build:
@@ -57,17 +101,16 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install hatch and pyinstaller
+      - name: Install hatch
         run: |
           python -m pip install --upgrade pip
-          pip install hatch pyinstaller
-          hatch env create
+          pip install hatch
 
-      - name: Build executable with PyInstaller
+      - name: Build executable
         env:
           PYINSTALLER_NAME: djbabel-${{ matrix.suffix }}
         run: |
-          hatch run pyinstaller djbabel.spec
+          hatch run build:build
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -77,10 +120,10 @@ jobs:
 
 
   release:
-    if: false # skip during tests
+    # if: false # skip during tests
     name: Create Release
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, deploy-pages]
 
     steps:
       - name: Download all build artifacts

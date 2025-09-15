@@ -45,6 +45,7 @@ from djbabel.types import (
 )
 
 from djbabel.utils import (
+    adjust_location,
     path_anchor,
 )
 
@@ -231,7 +232,7 @@ class TestRekordboxReadTags:
 
     def test_rekordbox_get_location(self):
         assert self.e0 is not None
-        result = get_rb_location(self.e0)
+        result = adjust_location(get_rb_location(self.e0))
         assert result.as_posix() == path_anchor(None).as_posix() + 'tests/audio/crate_write_test.mp3'
 
 

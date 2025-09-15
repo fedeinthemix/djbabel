@@ -50,6 +50,13 @@ packages = ["src/djbabel"]
 [tool.hatch.version]
 path = "src/djbabel/version.py"
 
+[tool.hatch.envs.build]
+extra-dependencies = [ "pyinstaller" ]
+scripts.build = [ "pyinstaller djbabel.spec" ]
+
+[tool.hatch.envs.docs]
+extra-dependencies = [ "sphinx" ]
+
 [project.urls]
 Homepage = "https://gitlab.com/fbengineering/djbabel"
 Documentation = "https://fbengineering.gitlab.io/djbabel"

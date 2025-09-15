@@ -2,18 +2,13 @@
 ..
 .. SPDX-License-Identifier: CC-BY-4.0
 
-.. fbespice documentation master file, created by
-   sphinx-quickstart on Fri Nov 15 10:52:14 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 DJBabel Documentation
 ======================
 
 A program and Python library to convert DJ playlists between
 
 * Serato DJ Pro
-* rekordbox,
+* rekordbox 7,
 * Traktor Pro 4.
 
 .. toctree::
