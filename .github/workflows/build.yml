@@ -124,6 +124,8 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     needs: [build, deploy-pages]
+    permissions:
+      contents: write
 
     steps:
       - name: Download all build artifacts
