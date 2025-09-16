@@ -58,5 +58,5 @@ scripts.build = [ "pyinstaller djbabel.spec" ]
 extra-dependencies = [ "sphinx" ]
 
 [project.urls]
-Homepage = "https://gitlab.com/fbengineering/djbabel"
-Documentation = "https://fbengineering.gitlab.io/djbabel"
+Homepage = "https://github.com/fedeinthemix/djbabel"
+Documentation = "https://fedeinthemix.github.io/djbabel"
